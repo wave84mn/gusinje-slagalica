@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="sr-Latn-ME">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#1d1a16">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Slagalica Gusinje</title>
+<meta name="description" content="Složi Gusinje od 64 dijela: digitalna verzija 3D-štampane slagalice Gusinja.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+<script type="importmap">{"imports":{"three":"./js/vendor/three/three.module.min.js","three/addons/":"./js/vendor/three/addons/"}}</script>
+<script type="module" src="js/main.js"></script>
+</head>
+<body data-mode="loading">
+<canvas id="gl"></canvas>
+<div id="labels"></div>
+
+<header id="bar">
+  <button id="bMenu" class="ib" data-t-label="menu" aria-label="Meni">
+    <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <div class="mid">
+    <div class="ttl" data-t="title">Slagalica Gusinje</div>
+    <div class="sub"><span id="count">0/64</span><span class="dot">·</span><span id="clock">0:00</span></div>
+  </div>
+  <button id="bPic" class="ib" data-t-label="picture" aria-label="Slika">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 16l5-5 4 4 3-3 5 5"/><circle cx="15.5" cy="9" r="1.6"/></svg>
+  </button>
+  <button id="bView" class="ib" data-t-label="view" aria-label="Pogled">
+    <svg viewBox="0 0 24 24"><path d="M12 3.5l8 4.5v8l-8 4.5-8-4.5V8z"/><path d="M4 8l8 4.5L20 8M12 12.5v8"/></svg>
+  </button>
+  <button id="bHint" class="ib accent" data-t-label="hint" aria-label="Pomoć">
+    <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>
+    <span id="hintN"></span>
+  </button>
+</header>
+
+<footer id="drawer"><div id="strip"></div></footer>
+
+<div id="exploreBar">
+  <button id="bExploreNew" class="btn" data-t="newGame">Nova igra</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- start screen -->
+<section id="start" hidden>
+  <div class="langs top"><button data-lang="me">ME</button><button data-lang="en">EN</button></div>
+  <div id="startPanel">
+    <h1 data-t="title">Slagalica Gusinje</h1>
+    <p class="lead" data-t="subtitle">Složi Gusinje od 64 dijela</p>
+    <button id="bContinue" class="btn primary wide" hidden><span data-t="continue">Nastavi</span><small id="contInfo"></small></button>
+    <div class="lvls">
+      <button class="lvl" data-level="easy"><b data-t="easy">Lako</b><span data-t="easyD"></span></button>
+      <button class="lvl" data-level="normal"><b data-t="normal">Srednje</b><span data-t="normalD"></span></button>
+      <button class="lvl" data-level="hard"><b data-t="hard">Teško</b><span data-t="hardD"></span></button>
+    </div>
+    <button id="bHow" class="link" data-t="howTo">Kako se igra</button>
+    <p id="standin" class="note" data-t="standin" hidden></p>
+  </div>
+</section>
+
+<!-- help -->
+<section id="help" class="ov" hidden>
+  <div class="panel">
+    <h2 data-t="howTo">Kako se igra</h2>
+    <ul class="howl">
+      <li><svg viewBox="0 0 48 48"><rect x="8" y="30" width="32" height="12" rx="3"/><rect x="17" y="8" width="14" height="14" rx="2"/><path d="M24 30v-6m-4 4l4-4 4 4"/></svg><span data-t="help1"></span></li>
+      <li><svg viewBox="0 0 48 48"><circle cx="16" cy="28" r="4"/><circle cx="32" cy="20" r="4"/><path d="M12 32l-5 5M36 16l5-5M7 31v6h6M41 17v-6h-6"/></svg><span data-t="help2"></span></li>
+      <li><svg viewBox="0 0 48 48"><circle cx="18" cy="30" r="4"/><circle cx="30" cy="30" r="4"/><path d="M18 24V10m-4 4l4-4 4 4M30 24V10m-4 4l4-4 4 4"/></svg><span data-t="help3"></span></li>
+      <li><svg viewBox="0 0 48 48"><rect x="13" y="13" width="22" height="22" rx="3"/><path d="M38 20a14 14 0 0 0-14-12m0 0l4-3m-4 3l3 4"/></svg><span data-t="help4"></span></li>
+      <li><svg viewBox="0 0 48 48"><path d="M19 36h10M21 41h6M24 7a11 11 0 0 0-6.6 19.8c1.3 1.1 2 2.4 2 4.2h9.2c0-1.8.7-3.1 2-4.2A11 11 0 0 0 24 7z"/></svg><span data-t="help5"></span></li>
+    </ul>
+    <button id="bHelpGo" class="btn primary wide" data-t="go">Kreni</button>
+  </div>
+</section>
+
+<!-- menu -->
+<section id="menu" class="sheet" hidden>
+  <div class="panel">
+    <div class="row"><span data-t="language">Jezik</span><div class="langs"><button data-lang="me">ME</button><button data-lang="en">EN</button></div></div>
+    <button id="bSound" class="row btnrow"><span data-t="sound">Zvuk</span><span id="soundState"></span></button>
+    <button id="bMenuHow" class="row btnrow"><span data-t="howTo">Kako se igra</span><span>›</span></button>
+    <button id="bAbout" class="row btnrow"><span data-t="about">O igri</span><span>›</span></button>
+    <button id="bMenuNew" class="btn wide" data-t="newGame">Nova igra</button>
+    <button class="btn ghost wide" data-close data-t="close">Zatvori</button>
+  </div>
+</section>
+
+<section id="about" class="ov" hidden>
+  <div class="panel">
+    <h2 data-t="about">O igri</h2>
+    <p data-t="aboutText"></p>
+    <p class="note" data-t="credits"></p>
+    <button class="btn wide" data-close data-t="close">Zatvori</button>
+  </div>
+</section>
+
+<!-- box picture -->
+<section id="pic" class="ov" hidden>
+  <figure class="picwrap"><img id="picImg" alt=""><figcaption data-t="picture">Slika</figcaption></figure>
+</section>
+
+<!-- landmark card -->
+<section id="card" class="ov" hidden>
+  <div class="panel small">
+    <h2 id="cardTitle"></h2>
+    <p id="cardPiece" class="note"></p>
+    <p id="cardText"></p>
+    <button class="btn wide" data-close data-t="close">Zatvori</button>
+  </div>
+</section>
+
+<!-- finished -->
+<section id="done" class="ov bottom" hidden>
+  <div class="panel">
+    <h2 data-t="bravo">Bravo!</h2>
+    <p class="lead" data-t="doneText"></p>
+    <div id="stars"><i></i><i></i><i></i></div>
+    <dl class="stats">
+      <div><dt data-t="time">Vrijeme</dt><dd id="doneTime"></dd></div>
+      <div><dt data-t="best">Najbolje</dt><dd id="doneBest"></dd></div>
+      <div><dt data-t="hints">Pomoć</dt><dd id="doneHints"></dd></div>
+    </dl>
+    <div class="two">
+      <button id="bExplore" class="btn primary" data-t="explore">Razgledaj</button>
+      <button id="bAgain" class="btn" data-t="playAgain">Igraj ponovo</button>
+    </div>
+  </div>
+</section>
+
+<div id="loading"><div class="bar"><i></i></div><span data-t="loading">Učitavanje…</span></div>
+</body>
+</html>
