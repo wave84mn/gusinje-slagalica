@@ -184,3 +184,29 @@ body.dragging #mapctl { opacity: 0.35; pointer-events: none; }
 #needle { transition: none; }
 #needle .n { fill: #e0614a; stroke: none; }
 #needle .s { fill: var(--mute); stroke: none; }
+
+/* ---------- AR ---------- */
+#ui { position: fixed; inset: 0; pointer-events: none; background: transparent; }
+#ui > * { pointer-events: auto; }
+#ui > #labels, #ui > #start, #ui > #toast { pointer-events: none; }
+#ui > #start > *, #labels.on .lbl { pointer-events: auto; }
+#touch { position: fixed; inset: 0; z-index: 1; display: none; touch-action: none; }
+.ib.ar { width: auto; min-width: 44px; padding: 0 10px; border-radius: 22px; font-weight: 800; font-size: 13px; letter-spacing: 0.04em;
+  color: var(--ochre-ink); background: var(--ochre); height: 32px; }
+#arUI { display: none; position: fixed; z-index: 11; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; }
+.arhint { position: fixed; left: 50%; top: calc(78px + var(--safe-t)); transform: translateX(-50%); width: min(88vw, 400px); padding: 10px 14px;
+  border-radius: 14px; background: rgba(28, 24, 19, 0.82); border: 1px solid var(--line); text-align: center; font-size: 14px; }
+.arhint:empty { display: none; }
+.arpanel { position: fixed; left: calc(10px + var(--safe-l)); right: calc(10px + var(--safe-r)); bottom: calc(var(--dock-h, 120px) + 10px);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; pointer-events: auto; }
+.arsizes { display: inline-flex; padding: 3px; border-radius: 12px; background: rgba(20, 17, 13, 0.78); border: 1px solid var(--line); }
+.arsizes button { min-width: 50px; min-height: 38px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--mute); }
+.arsizes button.sel { background: var(--ochre); color: var(--ochre-ink); }
+.arbtns { display: inline-flex; gap: 6px; }
+.btn.small { min-height: 40px; padding: 6px 12px; font-size: 13px; border-radius: 12px; background: rgba(36, 32, 26, 0.86); }
+body[data-ar] { background: transparent; }
+html:has(body[data-ar]) { background: transparent; }
+body[data-ar] #arUI { display: block; }
+body[data-ar] #touch { display: block; }
+body[data-ar] #mapctl, body[data-ar] #bPic, body[data-ar] #bView { display: none !important; }
+body[data-ar="placing"] #drawer, body[data-ar="placing"] #bArMove { visibility: hidden; }

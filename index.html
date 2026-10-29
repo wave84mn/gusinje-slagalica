@@ -17,6 +17,9 @@
 </head>
 <body data-mode="loading">
 <canvas id="gl"></canvas>
+<!-- everything on top of the 3D view; in AR this layer stays visible over the camera -->
+<div id="ui">
+<div id="touch"></div>
 <div id="labels"></div>
 
 <header id="bar">
@@ -33,6 +36,7 @@
   <button id="bView" class="ib" data-t-label="view" aria-label="Pogled">
     <svg viewBox="0 0 24 24"><path d="M12 3.5l8 4.5v8l-8 4.5-8-4.5V8z"/><path d="M4 8l8 4.5L20 8M12 12.5v8"/></svg>
   </button>
+  <button id="bAR" class="ib ar" data-t-label="ar" aria-label="AR" hidden><span>AR</span></button>
   <button id="bHint" class="ib accent" data-t-label="hint" aria-label="Pomoć">
     <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>
     <span id="hintN"></span>
@@ -56,6 +60,19 @@
   </button>
 </div>
 
+<div id="arUI">
+  <div id="arHint" class="arhint"></div>
+  <div class="arpanel">
+    <div class="arsizes" role="group" data-t-label="arSize">
+      <button data-size="0.3">30 cm</button><button data-size="0.6">60 cm</button><button data-size="1">1 m</button><button data-size="2">2 m</button>
+    </div>
+    <div class="arbtns">
+      <button id="bArMove" class="btn small" data-t="arMove">Premjesti</button>
+      <button id="bArExit" class="btn small" data-t="arExit">Izađi iz AR</button>
+    </div>
+  </div>
+</div>
+
 <div id="exploreBar">
   <button id="bExploreNew" class="btn" data-t="newGame">Nova igra</button>
 </div>
@@ -76,6 +93,7 @@
     </div>
     <button id="bHow" class="link" data-t="howTo">Kako se igra</button>
     <p id="standin" class="note" data-t="standin" hidden></p>
+    <p id="arNote" class="note" data-t="arNote" hidden></p>
   </div>
 </section>
 
@@ -150,5 +168,6 @@
 </section>
 
 <div id="loading"><div class="bar"><i></i></div><span data-t="loading">Učitavanje…</span></div>
+</div>
 </body>
 </html>

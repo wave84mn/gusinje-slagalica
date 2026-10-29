@@ -31,8 +31,24 @@ export class View {
     sc.left = -175; sc.right = 175; sc.top = 175; sc.bottom = -175; sc.near = 50; sc.far = 700;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.35;
-    scene.add(sun, sun.target);
+    // Everything of the game lives in `world`, in millimetres. On screen it sits at the origin;
+    // in AR it is placed on the real table and scaled to metres (see setAR).
+    this.world = new THREE.Group();
+    scene.add(this.world);
+    this.world.add(sun, sun.target);
     scene.add(new THREE.HemisphereLight(0xf2efe6, 0x4a3f30, 0.55));
+    // catches the tray's shadow on the real table in AR
+    this.catcher = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.32 }));
+    this.catcher.rotation.x = -Math.PI / 2;
+    this.catcher.scale.set(520, 520, 1);
+    this.catcher.position.y = 0.05;
+    this.catcher.receiveShadow = true;
+    this.catcher.visible = false;
+    this.catcher.userData.hideInCover = true;
+    this.world.add(this.catcher);
+    this.xr = false;
+    this._inv = new THREE.Matrix4();
+    this.uGameInv = { value: new THREE.Matrix4() };
 
     this.camera = new THREE.PerspectiveCamera(30, 1, 10, 5000);
     // camera rig: target on the floor, distance, tilt from vertical, yaw around Y
@@ -53,13 +69,15 @@ export class View {
   makePieceMaterial() {
     // flat shading: the models carry no normals (smaller files, crisp printed look)
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.0, flatShading: true });
-    const uTime = this.uTime;
+    const uTime = this.uTime, uGameInv = this.uGameInv;
     m.onBeforeCompile = (sh) => {
-      // water is marked by vertex-colour alpha 128 (see tools/glb.py); it gets a slow shimmer
+      // water is marked by vertex-colour alpha 128 (see tools/glb.py); it gets a slow shimmer,
+      // computed in the game's own millimetres so it looks the same on screen and in AR
       sh.uniforms.uTime = uTime;
+      sh.uniforms.uGameInv = uGameInv;
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        .replace('#include <common>', '#include <common>\nuniform mat4 uGameInv;\nvarying vec3 vWPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWPos = (uGameInv * modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying vec3 vWPos;\nfloat waterFx = 0.0;')
         .replace('#include <color_fragment>', `
@@ -77,13 +95,14 @@ export class View {
   }`)
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  if (waterFx > 0.5) roughnessFactor = 0.32;');
     };
-    m.customProgramCacheKey = () => 'piece-water-v2';
+    m.customProgramCacheKey = () => 'piece-water-v3';
     return m;
   }
 
   setInsets(top, bottom) { this.insets = { top, bottom }; this.resize(); }
 
   resize() {
+    if (this.renderer.xr.isPresenting) return;     // the AR session owns the size
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
     this.size = { w, h };
@@ -170,36 +189,89 @@ export class View {
 
   // Screen angle (radians, clockwise from up) of the map's north, for the compass.
   northAngle() {
-    this.applyRig();
     const a = this.worldToScreen(new THREE.Vector3(this.rig.x, this.floorY, this.rig.z));
     const b = this.worldToScreen(new THREE.Vector3(this.rig.x, this.floorY, this.rig.z - 20));
     return Math.atan2(b.x - a.x, -(b.y - a.y));
   }
 
-  // Screen (CSS px, relative to canvas) to a point on the horizontal plane at height y.
-  screenToPlane(sx, sy, y = this.floorY, out = new THREE.Vector3()) {
-    const { w, h } = this.size;
+  // The camera that shows the scene right now: the phone's own camera pose in AR, the rig otherwise.
+  activeCamera() {
+    if (this.renderer.xr.isPresenting) {
+      const xc = this.renderer.xr.getCamera();
+      return xc.cameras && xc.cameras.length ? xc.cameras[0] : xc;
+    }
     this.applyRig();
-    this.raycaster.setFromCamera({ x: (sx / w) * 2 - 1, y: -(sy / h) * 2 + 1 }, this.camera);
-    this.plane.constant = -y;
-    return this.raycaster.ray.intersectPlane(this.plane, out);
+    return this.camera;
   }
 
+  screenSize() { return this.renderer.xr.isPresenting ? { w: window.innerWidth, h: window.innerHeight } : this.size; }
+
+  // Screen (CSS px) to a point on the game's horizontal plane at height y (game millimetres).
+  screenToPlane(sx, sy, y = this.floorY, out = new THREE.Vector3()) {
+    const { w, h } = this.screenSize();
+    const cam = this.activeCamera();
+    this.raycaster.setFromCamera({ x: (sx / w) * 2 - 1, y: -(sy / h) * 2 + 1 }, cam);
+    this.world.updateMatrixWorld();
+    this._inv.copy(this.world.matrixWorld).invert();
+    const ray = this.raycaster.ray.clone().applyMatrix4(this._inv);
+    this.plane.constant = -y;
+    return ray.intersectPlane(this.plane, out);
+  }
+
+  // Game millimetres to screen (CSS px); z outside -1..1 means behind or beyond the camera.
   worldToScreen(v, out = { x: 0, y: 0, z: 0 }) {
-    const p = v.clone().project(this.camera);
-    out.x = (p.x + 1) / 2 * this.size.w;
-    out.y = (1 - p.y) / 2 * this.size.h;
+    const { w, h } = this.screenSize();
+    this.world.updateMatrixWorld();
+    const p = v.clone().applyMatrix4(this.world.matrixWorld).project(this.activeCamera());
+    out.x = (p.x + 1) / 2 * w;
+    out.y = (1 - p.y) / 2 * h;
     out.z = p.z;
     return out;
   }
 
-  // mm of world per CSS px at the target
-  mmPerPx() { return 2 * this.rig.dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / this.fullH; }
+  // mm of the game per CSS px near the middle of the view
+  mmPerPx() {
+    if (!this.renderer.xr.isPresenting) return 2 * this.rig.dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / this.fullH;
+    const a = this.worldToScreen(new THREE.Vector3(0, this.floorY, 0)), b = this.worldToScreen(new THREE.Vector3(10, this.floorY, 0));
+    const px = Math.hypot(b.x - a.x, b.y - a.y);
+    return px > 0.01 ? 10 / px : 1;
+  }
 
   render() {
-    this.applyRig();
-    this.renderer.render(this.scene, this.camera);
+    this.world.updateMatrixWorld();
+    this.uGameInv.value.copy(this.world.matrixWorld).invert();
+    if (this.renderer.xr.isPresenting) this.renderer.render(this.scene, this.camera);
+    else { this.applyRig(); this.renderer.render(this.scene, this.camera); }
     this.needsRender = false;
+  }
+
+  // Switch between the screen view and AR. In AR the world is scaled to metres by the caller
+  // (setWorldScale); the camera's near/far become those of a phone camera.
+  setAR(on) {
+    this.xr = on;
+    this.scene.background = on ? null : this.bg;
+    this.catcher.visible = on;
+    if (on) {
+      this._saved = { near: this.camera.near, far: this.camera.far, fov: this.camera.fov };
+      this.camera.near = 0.02; this.camera.far = 40; this.camera.updateProjectionMatrix();
+    } else {
+      this.world.position.set(0, 0, 0); this.world.quaternion.identity(); this.setWorldScale(1);
+      // the AR session overwrites the camera with the phone's; put ours back
+      if (this._saved) { this.camera.near = this._saved.near; this.camera.far = this._saved.far; this.camera.fov = this._saved.fov; this.camera.zoom = 1; }
+      this.resize();
+    }
+    this.renderer.shadowMap.needsUpdate = true;
+    this.needsRender = true;
+  }
+
+  // Scale of the game world (1 on screen; metres per millimetre in AR), keeping shadows right.
+  setWorldScale(s) {
+    this.world.scale.setScalar(s);
+    const sc = this.sun.shadow.camera;
+    sc.left = -175 * s; sc.right = 175 * s; sc.top = 175 * s; sc.bottom = -175 * s; sc.near = 50 * s; sc.far = 700 * s;
+    sc.updateProjectionMatrix();
+    this.sun.shadow.normalBias = 0.35 * s;
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   // ---------- guide map on the tray floor (outlines + codes) ----------

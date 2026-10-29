@@ -11,6 +11,9 @@ The 3D-printed Gusinje jigsaw (64 pieces in a 300 × 300 mm tray), played on a p
 - The bulb shows where one piece goes; the picture button shows the finished map.
 - Progress is saved on the phone. When the puzzle is done you can look around the town and tap the landmark names.
 - Placing a piece with a landmark briefly shows its name.
+- Turn the tray with a two-finger twist or the side buttons (zoom in/out, quarter turn, compass for north up).
+- **AR** (Chrome on Android phones with ARCore): tap **AR** in the game, point the phone at a table or the floor, and tap to put the tray down. Sizes 30 cm (real), 60 cm, 1 m or 2 m; pinch to resize, twist to turn, one finger to slide it. The drawer works as usual. The AR button only appears on phones that support it.
+- Sounds: pick up, put down, knobs clicking into neighbours (higher with more neighbours), victory fanfare. All synthesized; the menu turns them off.
 
 ## Files
 - `index.html`, `css/`, `js/`: the game (three.js r184, MIT, in `js/vendor/three`).
@@ -34,6 +37,8 @@ On screen the filament colours are slightly softened (`SCREEN` in `tools/convert
 ## Checks
 - `tests/play.cjs <url>`: plays the game in a phone-size Chromium with real touch events (drag, wrong drop, pinch, pan, tilt, hint, resume, finish, labels, Hard rotation, English).
 - `tests/look.cjs <url>`: screenshots of the main screens.
+- `tests/ar_sim.cjs <url>`: the AR maths and AR touch gestures, checked without a phone (real AR needs an Android phone).
+- `tests/sfx.cjs <url> <wav>`: renders the sound effects, checks levels, writes a preview.
 - `tools/standin.py`: the stand-in pieces used before the real files arrived.
 
 Map data © OpenStreetMap contributors (ODbL). Terrain: Copernicus DEM.

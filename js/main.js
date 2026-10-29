@@ -6,6 +6,7 @@ import { View, makeBlob } from './view.js';
 import { Gestures } from './input.js';
 import { t, setLang, getLang } from './i18n.js';
 import { sound, buzz } from './sound.js';
+import { ArMode } from './ar.js';
 
 const $ = s => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -27,6 +28,17 @@ const UP = new THREE.Vector3(0, 1, 0);
 const canvas = $('#gl');
 const LOW = params.has('lowpower');   // no antialiasing, 1x pixels, no idle animation (slow devices, tests)
 const view = new View(canvas, { low: LOW });
+let lastFound = null;
+const ar = new ArMode(view, {
+  onStart() { document.body.dataset.ar = 'placing'; $('#arHint').textContent = t('arPoint'); syncArSizes(); layout(); },
+  onSurface(found) { if (document.body.dataset.ar === 'placing' && found !== lastFound) { lastFound = found; $('#arHint').textContent = t(found ? 'arFound' : 'arPoint'); } },
+  onPlaced() { document.body.dataset.ar = 'on'; $('#arHint').textContent = ''; toast(t('arPlaced'), 3600); sound.drop(); buzz(20); },
+  onSize() { syncArSizes(); },
+  onEnd() { delete document.body.dataset.ar; $('#arHint').textContent = ''; lastFound = null; layout(); if (mode === 'play') view.fit(0, 10); },
+});
+function syncArSizes() {
+  document.querySelectorAll('.arsizes button').forEach(b => b.classList.toggle('sel', Math.abs(parseFloat(b.dataset.size) - ar.size) < 0.02));
+}
 const gestures = new Gestures(canvas, view, { onTap: (x, y) => onBoardTap(x, y), onInteract: () => { if (mode === 'attract') return; } });
 
 let puzzle, dataId, pieces = new Map(), board, guide, blob, ghost = null;
@@ -68,7 +80,7 @@ async function load() {
   // tray
   tg.scene.updateMatrixWorld(true);
   tg.scene.traverse(o => { if (o.isMesh) { o.material = view.material; o.receiveShadow = true; o.castShadow = true; } });
-  view.scene.add(tg.scene);
+  view.world.add(tg.scene);
 
   // pieces: one pivot group per code, positioned at its assembled place
   pg.scene.updateMatrixWorld(true);
@@ -94,14 +106,14 @@ async function load() {
   }
 
   board = new THREE.Group();
-  view.scene.add(board);
+  view.world.add(board);
   guide = view.makeGuide(puzzle);
   guide.userData.hideInCover = true;
-  view.scene.add(guide);
+  view.world.add(guide);
   blob = makeBlob();
   blob.visible = false;
   blob.userData.hideInCover = true;
-  view.scene.add(blob);
+  view.world.add(blob);
 
   layout();
   // thumbnails and the "box cover" picture
@@ -118,7 +130,7 @@ async function load() {
   if (puzzle.standin) $('#standin').hidden = false;
   $('#loading').classList.add('gone');
   showStart();
-  requestAnimationFrame(tick);
+  view.renderer.setAnimationLoop(tick);
   if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW) {
     // When a new version has been downloaded, switch to it at once, unless a game is under way
     // (then it switches the next time the start screen opens; progress is saved either way).
@@ -158,6 +170,7 @@ function savedGame() {
 
 let updateReady = false;
 function showStart() {
+  if (ar.active) ar.end();
   if (updateReady && mode === 'play') { save(); location.reload(); return; }
   mode = 'attract';
   gestures.enabled = false;
@@ -334,7 +347,7 @@ function dragStart(pr, cx, cy) {
   buzz(8);
   p.obj.rotation.set(0, -(state.rot[pr.code] || 0) * Math.PI / 2, 0);
   p.obj.position.set(0, -9999, 0);
-  view.scene.add(p.obj);
+  view.world.add(p.obj);
   const ext = p.half * 2 * 1.05;
   blob.scale.set(ext, ext, 1);
   blob.visible = true;
@@ -404,7 +417,7 @@ function returnToDrawer(d) {
   tile.classList.remove('shake'); void tile.offsetWidth;
   if (d.over) tile.classList.add('shake');
   tween(160, e => { p.obj.position.y = start.y + 40 * e; p.obj.scale.setScalar(1 - 0.6 * e); }, () => {
-    view.scene.remove(p.obj); p.obj.scale.setScalar(1); p.obj.visible = true;
+    view.world.remove(p.obj); p.obj.scale.setScalar(1); p.obj.visible = true;
   });
 }
 
@@ -454,7 +467,7 @@ function onBoardTap() { /* reserved: tapping the board does nothing in play */ }
 // auto-pan when a dragged piece is held near the edge of the map area
 const _ea = new THREE.Vector3(), _eb = new THREE.Vector3();
 function edgePan(dt) {
-  if (!drag || !drag.over) return false;
+  if (!drag || !drag.over || view.xr) return false;
   if (view.rig.dist > view.fitDist * 0.85) return false;
   const r = canvas.getBoundingClientRect();
   const top = view.insets.top;
@@ -497,7 +510,7 @@ function hint() {
   const s = view.worldToScreen(p.target);
   const r = canvas.getBoundingClientRect();
   const inView = s.x > 20 && s.x < r.width - 20 && s.y > view.insets.top + 20 && s.y < r.height - view.insets.bottom - 20;
-  if (!inView || view.rig.dist > view.fitDist * 0.7) view.animateTo({ x: p.target.x, z: p.target.z, dist: Math.min(view.rig.dist, view.fitDist * 0.55) }, 600);
+  if (!view.xr && (!inView || view.rig.dist > view.fitDist * 0.7)) view.animateTo({ x: p.target.x, z: p.target.z, dist: Math.min(view.rig.dist, view.fitDist * 0.55) }, 600);
 }
 
 function showGhost(code) {
@@ -515,13 +528,13 @@ function showGhost(code) {
   g.position.set(p.target.x, view.floorY + 0.2, p.target.z);
   g.renderOrder = 3;
   g.userData.hideInCover = true;
-  view.scene.add(g);
+  view.world.add(g);
   ghost = { code, g, t0: performance.now() };
 }
 
 function clearGhost() {
   if (!ghost) return;
-  view.scene.remove(ghost.g);
+  view.world.remove(ghost.g);
   ghost.g.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
   ghost = null;
   view.needsRender = true;
@@ -682,6 +695,15 @@ function wireUI() {
   $('#bZout').addEventListener('click', () => view.zoomBy(1 / 0.6));
   $('#bTurn').addEventListener('click', () => view.turnQuarter(1));
   $('#bNorth').addEventListener('click', () => view.northUp());
+  $('#bAR').addEventListener('click', () => {
+    sound.unlock();
+    if (ar.active) { ar.end(); return; }
+    ar.start().catch(err => { console.warn('AR', err); toast(t('arFail'), 3000); });
+  });
+  $('#bArExit').addEventListener('click', () => ar.end());
+  $('#bArMove').addEventListener('click', () => ar.replace());
+  document.querySelectorAll('.arsizes button').forEach(b => b.addEventListener('click', () => ar.setSize(parseFloat(b.dataset.size))));
+  ArMode.supported().then(ok => { $('#bAR').hidden = !ok; $('#arNote').hidden = !ok; });
   $('#bSound').addEventListener('click', () => { prefs.sound = !(prefs.sound !== false); sound.on = prefs.sound; store.set('slagalica.prefs', prefs); syncToggles(); sound.unlock(); });
   $('#bMenuHow').addEventListener('click', () => openOverlay('#help'));
   $('#bMenuNew').addEventListener('click', () => { closeAll(); save(); showStart(); });
@@ -718,8 +740,8 @@ function runTweens(now) {
 let last = performance.now(), lastRender = 0, lastSecond = 0, lastNorth = 0;
 const needle = document.getElementById('needle');
 const strip = document.getElementById('strip');
-function tick(now) {
-  requestAnimationFrame(tick);
+function tick(now, frame) {
+  now = performance.now();
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   let active = view.stepAnim(now);
@@ -740,7 +762,8 @@ function tick(now) {
     active = true;
   }
   view.uTime.value = now / 1000;
-  if (view.needsRender || active || (!LOW && now - lastRender > 48)) {
+  if (ar.active) ar.onFrame(frame);
+  if (view.renderer.xr.isPresenting || view.needsRender || active || (!LOW && now - lastRender > 48)) {
     view.render();
     lastRender = now;
     updateLabels(now);
@@ -752,7 +775,7 @@ function tick(now) {
 // test hooks (used by the automated checks)
 window.__game = {
   get state() { return { ...state, placed: [...state.placed], mode }; },
-  view, pieces, startGame, place, hint, sound, neighbours,
+  view, pieces, startGame, place, hint, sound, neighbours, ar,
   screenOf(code) { const p = pieces.get(code); view.applyRig(); const s = view.worldToScreen(p.target); const r = canvas.getBoundingClientRect(); return { x: s.x + r.left, y: s.y + r.top, lift: drag ? liftPx() : null }; },
   liftFor(code, touch = true) { const p = pieces.get(code); if (!touch) return 0; const px = p.half / view.mmPerPx(); return Math.min(110, Math.max(56, px + 34)); },
 };
