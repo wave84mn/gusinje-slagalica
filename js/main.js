@@ -119,7 +119,17 @@ async function load() {
   $('#loading').classList.add('gone');
   showStart();
   requestAnimationFrame(tick);
-  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW) {
+    // When a new version has been downloaded, switch to it at once, unless a game is under way
+    // (then it switches the next time the start screen opens; progress is saved either way).
+    const hadOld = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadOld || updateReady) return;
+      updateReady = true;
+      if (mode !== 'play') location.reload();
+    });
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 }
 
 // ------------------------------------------------------------------ layout / insets
@@ -146,7 +156,9 @@ function savedGame() {
   return s && !s.done && s.placed?.length ? s : null;
 }
 
+let updateReady = false;
 function showStart() {
+  if (updateReady && mode === 'play') { save(); location.reload(); return; }
   mode = 'attract';
   gestures.enabled = false;
   document.body.dataset.mode = 'attract';
