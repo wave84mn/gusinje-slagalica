@@ -51,7 +51,8 @@ export class View {
   }
 
   makePieceMaterial() {
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.0 });
+    // flat shading: the models carry no normals (smaller files, crisp printed look)
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.0, flatShading: true });
     const uTime = this.uTime;
     m.onBeforeCompile = (sh) => {
       // water is marked by vertex-colour alpha 128 (see tools/glb.py); it gets a slow shimmer
@@ -182,8 +183,9 @@ export class View {
     cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     g.lineJoin = 'round';
-    g.strokeStyle = 'rgba(70,55,40,0.55)';
-    g.lineWidth = 3;
+    const gc = puzzle.guide || {};
+    g.strokeStyle = gc.line || 'rgba(70,55,40,0.55)';
+    g.lineWidth = Math.max(3, Math.round(0.45 * sx));
     for (const p of puzzle.pieces) {
       g.beginPath();
       p.outline.forEach(([x, z], i) => {
@@ -193,7 +195,7 @@ export class View {
       g.closePath();
       g.stroke();
     }
-    g.fillStyle = 'rgba(70,55,40,0.42)';
+    g.fillStyle = gc.text || 'rgba(70,55,40,0.42)';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.font = `600 ${Math.round(9 * sx)}px system-ui, sans-serif`;
     for (const p of puzzle.pieces) g.fillText(p.code, (p.pos[0] - x0) * sx, (p.pos[1] - z0) * sx);

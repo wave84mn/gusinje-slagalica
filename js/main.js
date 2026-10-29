@@ -400,6 +400,7 @@ function place(code, animate) {
     popLandmarks(code);
   }
   view.renderer.shadowMap.needsUpdate = true;
+  view.needsRender = true;
   updateHud();
   save();
   if (state.placed.size === pieces.size) finish();
@@ -499,7 +500,7 @@ function finish() {
     document.body.dataset.mode = 'explore';
     gestures.mode = 'explore';
     layout();
-    view.animateTo({ x: 0, z: 0, dist: view.fitDist * 0.86, tilt: 0.88 }, 1400);
+    view.animateTo({ x: 0, z: 0, dist: view.fitDist * 0.8, tilt: 0.85 }, 1400);
     setTimeout(() => { showLabels(); openOverlay('#done'); }, 1200);
   }, 450);
 }
@@ -519,13 +520,21 @@ function startExplore() {
 const labels = [];
 function buildLabels() {
   const root = $('#labels');
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.id = 'leaders';
+  root.appendChild(svg);
   for (const lm of puzzle.landmarks || []) {
     const el = document.createElement('button');
     el.className = 'lbl';
     el.type = 'button';
     el.addEventListener('click', () => openCard(lm));
     root.appendChild(el);
-    labels.push({ lm, el, pos: new THREE.Vector3(...lm.pos), pop: 0 });
+    const line = document.createElementNS(SVGNS, 'line');
+    const dot = document.createElementNS(SVGNS, 'circle');
+    dot.setAttribute('r', 2.6);
+    line.style.display = dot.style.display = 'none';
+    svg.append(line, dot);
+    labels.push({ lm, el, line, dot, pos: new THREE.Vector3(...lm.pos), pop: 0 });
   }
   refreshLabelText();
 }
@@ -536,34 +545,47 @@ function hideLabels() { labelsOn = false; $('#labels').classList.remove('on'); }
 function popLandmarks(code) {
   for (const l of labels) if (l.lm.piece === code) { l.pop = performance.now() + 2600; }
 }
+const SVGNS = 'http://www.w3.org/2000/svg';
 function updateLabels(now) {
-  // Show labels; push overlapping ones upwards (nearest first) with a longer stem.
+  // Most important first: each label tries a few spots near its building; if none is free it waits
+  // until the user zooms in. A thin leader line joins the label to its building.
+  const svg = $('#leaders');
   const items = [];
-  for (const l of labels) {
+  labels.forEach((l, i) => {
     const show = labelsOn || l.pop > now;
-    if (!show) { l.el.style.display = 'none'; continue; }
+    if (!show) { l.el.style.display = 'none'; l.line.style.display = 'none'; l.dot.style.display = 'none'; return; }
     const s = view.worldToScreen(l.pos);
-    if (s.z > 1 || s.z < -1) { l.el.style.display = 'none'; continue; }
+    if (s.z > 1 || s.z < -1) { l.el.style.display = 'none'; l.line.style.display = 'none'; l.dot.style.display = 'none'; return; }
     if (l.el.style.display !== 'block') { l.el.style.display = 'block'; l.w = 0; }
     if (!l.w) { l.w = l.el.offsetWidth; l.h = l.el.offsetHeight; }
-    items.push({ l, s });
-  }
-  items.sort((a, b) => b.s.y - a.s.y);
+    items.push({ l, s, prio: i });
+  });
+  items.sort((a, b) => a.prio - b.prio);
   const taken = [];
+  const top = view.insets.top + 4, bottom = view.size.h - view.insets.bottom - 4;
   for (const { l, s } of items) {
-    let shift = 0;
-    const x0 = s.x - l.w / 2 - 3, x1 = s.x + l.w / 2 + 3;
-    for (let k = 0; k < 6; k++) {
-      const y1 = s.y - 8 - shift, y0 = y1 - l.h - 3;
-      if (!taken.some(r => x0 < r.x1 && x1 > r.x0 && y0 < r.y1 && y1 > r.y0)) break;
-      shift += l.h + 5;
+    const g = 10, w = l.w, h = l.h;
+    const spots = [[0, -g], [0, -g - h - 6], [w / 2 + 12, -g - h / 2], [-(w / 2 + 12), -g - h / 2], [0, g + h], [w / 2 + 12, -g - h - 8], [-(w / 2 + 12), -g - h - 8]];
+    let chosen = null;
+    for (const [dx, dy] of spots) {
+      const cx = s.x + dx, by = s.y + dy;            // label centre x, bottom y
+      const r = { x0: cx - w / 2 - 3, x1: cx + w / 2 + 3, y0: by - h - 3, y1: by + 1 };
+      if (r.y0 < top || r.y1 > bottom || r.x0 < 2 || r.x1 > view.size.w - 2) continue;
+      if (!taken.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0)) { chosen = { cx, by, r }; break; }
     }
-    const y1 = s.y - 8 - shift;
-    taken.push({ x0, x1, y0: y1 - l.h - 3, y1 });
-    l.el.style.setProperty('--stem', `${8 + shift}px`);
-    l.el.style.transform = `translate(${s.x}px, ${y1}px) translate(-50%, -100%)`;
+    if (!chosen) { l.el.style.display = 'none'; l.line.style.display = 'none'; l.dot.style.display = 'none'; continue; }
+    taken.push(chosen.r);
+    l.el.style.transform = `translate(${chosen.cx}px, ${chosen.by}px) translate(-50%, -100%)`;
     l.el.classList.toggle('popping', !labelsOn && l.pop > now);
+    // leader from the building to the nearest point of the label
+    const lx = Math.max(chosen.r.x0 + 6, Math.min(chosen.r.x1 - 6, s.x));
+    const ly = chosen.by < s.y ? chosen.by : chosen.by - h;
+    l.line.setAttribute('x1', s.x); l.line.setAttribute('y1', s.y);
+    l.line.setAttribute('x2', lx); l.line.setAttribute('y2', ly);
+    l.dot.setAttribute('cx', s.x); l.dot.setAttribute('cy', s.y);
+    l.line.style.display = ''; l.dot.style.display = '';
   }
+  svg.setAttribute('viewBox', `0 0 ${view.size.w} ${view.size.h}`);
 }
 function openCard(lm) {
   $('#cardTitle').textContent = lm.name[getLang()] || lm.name.me;

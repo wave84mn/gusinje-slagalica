@@ -71,7 +71,9 @@ body.dragging #strip { overflow-x: hidden; }
 #labels { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 .lbl { position: absolute; left: 0; top: 0; padding: 5px 10px; border-radius: 999px; background: rgba(28, 24, 19, 0.88); color: var(--ink);
   font-size: 12.5px; font-weight: 600; white-space: nowrap; border: 1px solid rgba(219, 165, 67, 0.55); display: none; pointer-events: none; }
-.lbl::after { content: ""; position: absolute; left: 50%; bottom: calc(-1px - var(--stem, 8px)); width: 2px; height: var(--stem, 8px); margin-left: -1px; background: rgba(219, 165, 67, 0.8); }
+#leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#leaders line { stroke: rgba(219, 165, 67, 0.85); stroke-width: 1.4; }
+#leaders circle { fill: var(--ochre); stroke: rgba(28, 24, 19, 0.9); stroke-width: 1; }
 #labels.on .lbl { pointer-events: auto; }
 .lbl.popping { animation: pop .35s cubic-bezier(.2, 1.4, .4, 1); }
 @keyframes pop { from { opacity: 0; } }
@@ -167,3 +169,4 @@ body[data-mode="explore"] #exploreBar { display: flex; }
 @media (prefers-reduced-motion: reduce) {
   .pc, #toast { transition: none; }
 }
+body[data-mode="explore"] #toast { top: auto; bottom: calc(92px + var(--safe-b)); }

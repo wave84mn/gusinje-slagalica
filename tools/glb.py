@@ -42,9 +42,8 @@ class GLB:
         return len(self.accs) - 1
 
     def add(self, name, pos, nrm, col, idx, translation=(0, 0, 0), fx=None, extras=None):
-        """pos/nrm: (n,3) float; col: (n,3) sRGB 0..1; idx: (m,3) or (k,) int."""
+        """pos/nrm: (n,3) float (nrm may be None); col: (n,3) sRGB 0..1; idx: (m,3) or (k,) int."""
         pos = np.ascontiguousarray(pos, dtype=np.float32)
-        nrm = np.ascontiguousarray(nrm, dtype=np.float32)
         lin = srgb2lin(np.clip(col, 0, 1))
         c8 = np.ascontiguousarray(np.round(lin * 255), dtype=np.uint8)
         # alpha carries the water flag (survives mesh compression): 255 = normal, 128 = water
@@ -53,11 +52,10 @@ class GLB:
             alpha[np.asarray(fx).reshape(-1) > 0.5] = 128
         c8 = np.concatenate([c8, alpha], axis=1)
         idx = np.ascontiguousarray(np.asarray(idx).reshape(-1), dtype=np.uint32)
-        attrs = {
-            "POSITION": self._acc(pos, 5126, "VEC3", minmax=True),
-            "NORMAL": self._acc(nrm, 5126, "VEC3"),
-            "COLOR_0": self._acc(c8, 5121, "VEC4", normalized=True),
-        }
+        attrs = {"POSITION": self._acc(pos, 5126, "VEC3", minmax=True)}
+        if nrm is not None:   # without normals the game shades faces flat
+            attrs["NORMAL"] = self._acc(np.ascontiguousarray(nrm, dtype=np.float32), 5126, "VEC3")
+        attrs["COLOR_0"] = self._acc(c8, 5121, "VEC4", normalized=True)
         ia = self._acc(idx, 5125, "SCALAR", target=34963)
         self.meshes.append({"name": name, "primitives": [{"attributes": attrs, "indices": ia, "material": 0}]})
         node = {"name": name, "mesh": len(self.meshes) - 1}
