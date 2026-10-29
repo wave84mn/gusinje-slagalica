@@ -318,6 +318,8 @@ function dragStart(pr, cx, cy) {
   state.lastTried = pr.code;
   if (!state.started) { state.started = true; }
   pr.tile.classList.add('lifted');
+  sound.pick();
+  buzz(8);
   p.obj.rotation.set(0, -(state.rot[pr.code] || 0) * Math.PI / 2, 0);
   p.obj.position.set(0, -9999, 0);
   view.scene.add(p.obj);
@@ -363,6 +365,7 @@ function dragEnd(cx, cy) {
   if (d.over && dist <= tol && rotOk) {
     place(d.code, true);
   } else {
+    if (!d.over) sound.back();
     if (d.over) {
       sound.no(); buzz(12);
       toast(dist <= tol && !rotOk ? t('turnIt') : t('notHere'));
@@ -407,7 +410,10 @@ function place(code, animate) {
   }
   if (ghost && ghost.code === code) clearGhost();
   if (animate) {
-    sound.click(); buzz(18);
+    // set down in the tray; if it joins pieces already there, the knobs click in too
+    const joined = neighbours(code).filter(c => c !== code && state.placed.has(c)).length;
+    sound.drop();
+    if (joined) { setTimeout(() => sound.connect(joined), 60); buzz([14, 40, 20]); } else buzz(16);
     const y0 = p.target.y;
     p.obj.position.y = y0 + 3.2;
     tween(220, e => { p.obj.position.y = y0 + 3.2 * (1 - e) * (1 - e); }, () => { view.renderer.shadowMap.needsUpdate = true; });
@@ -418,6 +424,17 @@ function place(code, animate) {
   updateHud();
   save();
   if (state.placed.size === pieces.size) finish();
+}
+
+// pieces next to this one in the 8 x 8 grid (A-H west to east, 1-8 north to south)
+function neighbours(code) {
+  const i = 'ABCDEFGH'.indexOf(code[0]), j = parseInt(code.slice(1), 10);
+  const out = [];
+  for (const [di, dj] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+    const ii = i + di, jj = j + dj;
+    if (ii >= 0 && ii < 8 && jj >= 1 && jj <= 8) out.push('ABCDEFGH'[ii] + jj);
+  }
+  return out;
 }
 
 function onBoardTap() { /* reserved: tapping the board does nothing in play */ }
@@ -502,7 +519,7 @@ function clearGhost() {
 function finish() {
   state.done = true;
   save();
-  sound.chime(); buzz([30, 60, 30]);
+  setTimeout(() => sound.victory(), 250); buzz([30, 60, 30, 60, 60]);
   guide.visible = false;
   const lv = state.level;
   const bestAll = store.get(`slagalica.best.${dataId}`, {});
@@ -723,7 +740,7 @@ function tick(now) {
 // test hooks (used by the automated checks)
 window.__game = {
   get state() { return { ...state, placed: [...state.placed], mode }; },
-  view, pieces, startGame, place, hint,
+  view, pieces, startGame, place, hint, sound, neighbours,
   screenOf(code) { const p = pieces.get(code); view.applyRig(); const s = view.worldToScreen(p.target); const r = canvas.getBoundingClientRect(); return { x: s.x + r.left, y: s.y + r.top, lift: drag ? liftPx() : null }; },
   liftFor(code, touch = true) { const p = pieces.get(code); if (!touch) return 0; const px = p.half / view.mmPerPx(); return Math.min(110, Math.max(56, px + 34)); },
 };
