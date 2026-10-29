@@ -44,12 +44,22 @@ async function load() {
   const bar = $('#loading i');
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
+  MeshoptDecoder.ready?.catch?.(() => {});   // only needed for compressed files
   const prog = { a: 0, b: 0 };
   const showProg = () => { bar.style.width = `${Math.round(100 * (0.1 + 0.9 * (prog.a * 0.92 + prog.b * 0.08)))}%`; };
-  const get = (url, key) => new Promise((res, rej) => loader.load(url, res, e => { if (e.total) { prog[key] = e.loaded / e.total; showProg(); } }, rej));
+  const get = async (url, key) => {
+    if (url.endsWith('.txt')) {   // base64 text copy of a .glb, for hosts that don't serve .glb files
+      const txt = await (await fetch(url)).text();
+      const bin = Uint8Array.from(atob(txt.trim()), c => c.charCodeAt(0));
+      prog[key] = 1; showProg();
+      return new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej));
+    }
+    return new Promise((res, rej) => loader.load(url, res, e => { if (e.total) { prog[key] = e.loaded / e.total; showProg(); } }, rej));
+  };
+  const files = window.SLAGALICA_FILES || { pieces: 'data/pieces.glb', tray: 'data/tray.glb' };
   puzzle = await (await fetch('data/puzzle.json')).json();
   dataId = puzzle.id || (puzzle.standin ? 'standin' : 'v1');
-  const [pg, tg] = await Promise.all([get('data/pieces.glb', 'a'), get('data/tray.glb', 'b')]);
+  const [pg, tg] = await Promise.all([get(files.pieces, 'a'), get(files.tray, 'b')]);
 
   view.floorY = puzzle.tray.floorY;
   view.extent = Math.max(...puzzle.tray.size);
@@ -109,7 +119,7 @@ async function load() {
   $('#loading').classList.add('gone');
   showStart();
   requestAnimationFrame(tick);
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 // ------------------------------------------------------------------ layout / insets
