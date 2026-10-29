@@ -136,6 +136,7 @@ function layout() {
     bottom = h - $('#exploreBar').getBoundingClientRect().top;
   }
   view.setInsets(top, Math.max(0, bottom));
+  document.documentElement.style.setProperty('--dock-h', `${Math.max(0, bottom)}px`);
 }
 window.addEventListener('resize', () => { layout(); });
 
@@ -255,10 +256,13 @@ function buildDrawer() {
   strip.scrollLeft = 0;
 }
 
+// A tile shows its piece turned the same way the map is turned (--map-rot), plus the piece's own
+// quarter turns on Teško (--k).
 function setTileRot(tile, k, animate = true) {
   const th = tile.querySelector('.tw');
-  th.style.transition = animate ? 'transform .18s ease' : 'none';
-  th.style.transform = `rotate(${k * 90}deg)`;
+  th.style.transition = animate ? '' : 'none';
+  th.style.setProperty('--k', k);
+  if (!animate) requestAnimationFrame(() => { th.style.transition = ''; });
   tile.dataset.rot = k;
 }
 
@@ -419,19 +423,25 @@ function place(code, animate) {
 function onBoardTap() { /* reserved: tapping the board does nothing in play */ }
 
 // auto-pan when a dragged piece is held near the edge of the map area
+const _ea = new THREE.Vector3(), _eb = new THREE.Vector3();
 function edgePan(dt) {
   if (!drag || !drag.over) return false;
+  if (view.rig.dist > view.fitDist * 0.85) return false;
   const r = canvas.getBoundingClientRect();
-  const top = view.insets.top, bottom = r.height - view.insets.bottom;
+  const top = view.insets.top;
   const sx = drag.cx - r.left, sy = drag.cy - r.top - liftPx();
   const m = 34;
   let vx = 0, vy = 0;
   if (sx < m) vx = -(m - sx) / m; else if (sx > r.width - m) vx = (sx - (r.width - m)) / m;
   if (sy < top + m) vy = -(top + m - sy) / m;
   if (!vx && !vy) return false;
-  if (view.rig.dist > view.fitDist * 0.85) return false;
-  const speed = 0.9 * view.mmPerPx() * 600 * dt;
-  view.rig.x += vx * speed; view.rig.z += vy * speed;
+  // turn the screen direction into a map direction (the map may be rotated or tilted)
+  const A = view.screenToPlane(r.width / 2, (top + r.height - view.insets.bottom) / 2, view.floorY, _ea);
+  const B = view.screenToPlane(r.width / 2 + vx * 40, (top + r.height - view.insets.bottom) / 2 + vy * 40, view.floorY, _eb);
+  if (!A || !B) return false;
+  const dx = B.x - A.x, dz = B.z - A.z, len = Math.hypot(dx, dz) || 1;
+  const speed = view.mmPerPx() * 540 * dt * Math.hypot(vx, vy);
+  view.rig.x += dx / len * speed; view.rig.z += dz / len * speed;
   view.clampRig();
   dragMove(drag.cx, drag.cy);
   return true;
@@ -639,6 +649,10 @@ function wireUI() {
   $('#bPic').addEventListener('click', () => openOverlay('#pic'));
   $('#pic').addEventListener('click', closeAll);
   $('#bView').addEventListener('click', () => view.animateTo({ tilt: view.rig.tilt > 0.3 ? 0 : 0.85 }, 500));
+  $('#bZin').addEventListener('click', () => view.zoomBy(0.6));
+  $('#bZout').addEventListener('click', () => view.zoomBy(1 / 0.6));
+  $('#bTurn').addEventListener('click', () => view.turnQuarter(1));
+  $('#bNorth').addEventListener('click', () => view.northUp());
   $('#bSound').addEventListener('click', () => { prefs.sound = !(prefs.sound !== false); sound.on = prefs.sound; store.set('slagalica.prefs', prefs); syncToggles(); sound.unlock(); });
   $('#bMenuHow').addEventListener('click', () => openOverlay('#help'));
   $('#bMenuNew').addEventListener('click', () => { closeAll(); save(); showStart(); });
@@ -672,7 +686,9 @@ function runTweens(now) {
   return true;
 }
 
-let last = performance.now(), lastRender = 0, lastSecond = 0;
+let last = performance.now(), lastRender = 0, lastSecond = 0, lastNorth = 0;
+const needle = document.getElementById('needle');
+const strip = document.getElementById('strip');
 function tick(now) {
   requestAnimationFrame(tick);
   const dt = Math.min(0.1, (now - last) / 1000);
@@ -699,6 +715,8 @@ function tick(now) {
     view.render();
     lastRender = now;
     updateLabels(now);
+    const na = view.northAngle();
+    if (Math.abs(na - lastNorth) > 0.002) { lastNorth = na; needle.style.transform = `rotate(${na}rad)`; strip.style.setProperty('--map-rot', `${na}rad`); }
   }
 }
 

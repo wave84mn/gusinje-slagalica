@@ -41,6 +41,21 @@
 
 <footer id="drawer"><div id="strip"></div></footer>
 
+<div id="mapctl">
+  <button id="bNorth" class="mc" data-t-label="north" aria-label="Sjever gore">
+    <svg viewBox="0 0 24 24" id="needle"><path class="n" d="M12 2.8l3.4 9.2H8.6z"/><path class="s" d="M12 21.2l-3.4-9.2h6.8z"/></svg>
+  </button>
+  <button id="bTurn" class="mc" data-t-label="turn" aria-label="Okreni mapu">
+    <svg viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5"/><path d="M19.6 3.6v4.6H15"/></svg>
+  </button>
+  <button id="bZin" class="mc" data-t-label="zoomIn" aria-label="Približi">
+    <svg viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></svg>
+  </button>
+  <button id="bZout" class="mc" data-t-label="zoomOut" aria-label="Udalji">
+    <svg viewBox="0 0 24 24"><path d="M5.5 12h13"/></svg>
+  </button>
+</div>
+
 <div id="exploreBar">
   <button id="bExploreNew" class="btn" data-t="newGame">Nova igra</button>
 </div>
@@ -72,6 +87,7 @@
       <li><svg viewBox="0 0 48 48"><rect x="8" y="30" width="32" height="12" rx="3"/><rect x="17" y="8" width="14" height="14" rx="2"/><path d="M24 30v-6m-4 4l4-4 4 4"/></svg><span data-t="help1"></span></li>
       <li><svg viewBox="0 0 48 48"><circle cx="16" cy="28" r="4"/><circle cx="32" cy="20" r="4"/><path d="M12 32l-5 5M36 16l5-5M7 31v6h6M41 17v-6h-6"/></svg><span data-t="help2"></span></li>
       <li><svg viewBox="0 0 48 48"><circle cx="18" cy="30" r="4"/><circle cx="30" cy="30" r="4"/><path d="M18 24V10m-4 4l4-4 4 4M30 24V10m-4 4l4-4 4 4"/></svg><span data-t="help3"></span></li>
+      <li><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="15"/><path d="M24 11l4 13h-8z" fill="currentColor"/><path d="M24 37l-4-13h8z"/></svg><span data-t="help6"></span></li>
       <li><svg viewBox="0 0 48 48"><rect x="13" y="13" width="22" height="22" rx="3"/><path d="M38 20a14 14 0 0 0-14-12m0 0l4-3m-4 3l3 4"/></svg><span data-t="help4"></span></li>
       <li><svg viewBox="0 0 48 48"><path d="M19 36h10M21 41h6M24 7a11 11 0 0 0-6.6 19.8c1.3 1.1 2 2.4 2 4.2h9.2c0-1.8.7-3.1 2-4.2A11 11 0 0 0 24 7z"/></svg><span data-t="help5"></span></li>
     </ul>

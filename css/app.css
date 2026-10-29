@@ -52,7 +52,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
   background: radial-gradient(circle at 50% 40%, rgba(255, 245, 225, 0.10), rgba(255, 245, 225, 0.03)); border: 1px solid var(--line);
   touch-action: pan-x; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   transition: width .24s ease, margin .24s ease, opacity .2s ease, transform .2s ease, border-color .2s; }
-.pc .tw { width: 80px; height: 80px; display: block; pointer-events: none; }
+.pc .tw { width: 80px; height: 80px; display: block; pointer-events: none;
+  transform: rotate(calc(var(--map-rot, 0rad) + var(--k, 0) * 90deg)); transition: transform .18s ease; }
 .pc .th { width: 80px; height: 80px; display: block; }
 .pc .code { position: absolute; right: 5px; bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: .03em; color: var(--mute);
   background: rgba(20, 17, 13, 0.7); padding: 1px 5px; border-radius: 6px; display: none; pointer-events: none; }
@@ -170,3 +171,16 @@ body[data-mode="explore"] #exploreBar { display: flex; }
   .pc, #toast { transition: none; }
 }
 body[data-mode="explore"] #toast { top: auto; bottom: calc(92px + var(--safe-b)); }
+
+/* ---------- map buttons (zoom, turn, compass) ---------- */
+#mapctl { position: fixed; z-index: 9; right: calc(10px + var(--safe-r)); bottom: calc(var(--dock-h, 120px) + 12px); display: none; flex-direction: column; gap: 8px; }
+body[data-mode="play"] #mapctl, body[data-mode="explore"] #mapctl { display: flex; }
+body.dragging #mapctl { opacity: 0.35; pointer-events: none; }
+.mc { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(36, 32, 26, 0.86); border: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
+.mc svg { width: 22px; height: 22px; }
+.mc:active { background: var(--panel-2); }
+.mc:focus-visible, .ib:focus-visible, .btn:focus-visible, .pc:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
+#needle { transition: none; }
+#needle .n { fill: #e0614a; stroke: none; }
+#needle .s { fill: var(--mute); stroke: none; }

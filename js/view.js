@@ -147,7 +147,34 @@ export class View {
     return true;
   }
 
-  fit(tilt = 0, ms = 450) { this.animateTo({ x: 0, z: 0, dist: this.fitDist, tilt, yaw: 0 }, ms); }
+  fit(tilt = 0, ms = 450, yaw = 0) { this.animateTo({ x: 0, z: 0, dist: this.fitDist, tilt, yaw }, ms); }
+
+  // Zoom in (f < 1) or out (f > 1) around the middle of the view.
+  zoomBy(f, ms = 260) {
+    const d = Math.min(this.fitDist * 1.35, Math.max(this.fitDist * 0.16, this.rig.dist * f));
+    this.animateTo({ dist: d }, ms);
+  }
+
+  // Turn the map by a quarter (dir = 1 clockwise, -1 counter-clockwise), snapping to whole quarters.
+  turnQuarter(dir = 1, ms = 380) {
+    const q = Math.PI / 2;
+    const target = (Math.round(this.rig.yaw / q) + dir) * q;
+    this.animateTo({ yaw: target }, ms);
+  }
+
+  // Back to north up, the short way round.
+  northUp(ms = 420) {
+    const y = this.rig.yaw;
+    this.animateTo({ yaw: y - Math.atan2(Math.sin(y), Math.cos(y)) }, ms);
+  }
+
+  // Screen angle (radians, clockwise from up) of the map's north, for the compass.
+  northAngle() {
+    this.applyRig();
+    const a = this.worldToScreen(new THREE.Vector3(this.rig.x, this.floorY, this.rig.z));
+    const b = this.worldToScreen(new THREE.Vector3(this.rig.x, this.floorY, this.rig.z - 20));
+    return Math.atan2(b.x - a.x, -(b.y - a.y));
+  }
 
   // Screen (CSS px, relative to canvas) to a point on the horizontal plane at height y.
   screenToPlane(sx, sy, y = this.floorY, out = new THREE.Vector3()) {

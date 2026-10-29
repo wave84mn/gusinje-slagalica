@@ -1,9 +1,14 @@
 // Touch and mouse gestures on the 3D view.
 //   one finger: move the map (in "explore" mode: turn around it)
-//   two fingers: pinch to zoom and move; both fingers up/down together: tilt
+//   two fingers: pinch to zoom, twist to rotate, move together to pan;
+//                both fingers straight up/down together: tilt
 //   double tap: zoom in, double tap again: back to the whole tray
-//   mouse wheel: zoom at the cursor
+//   mouse: wheel zooms at the cursor, right-drag (or Shift+drag) rotates and tilts
 import * as THREE from 'three';
+
+const TWIST_START = 0.12;   // radians of twist before rotation kicks in, so a pinch doesn't wobble
+
+function wrap(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
 
 export class Gestures {
   constructor(el, view, hooks = {}) {
@@ -15,6 +20,8 @@ export class Gestures {
     this.p = new Map();
     this.kind = null;
     this.lastTap = null;
+    this.twist = 0;
+    this.rotating = false;
     this.a = new THREE.Vector3();
     this.b = new THREE.Vector3();
     el.addEventListener('pointerdown', e => this.down(e));
@@ -36,7 +43,8 @@ export class Gestures {
     const q = this.local(e);
     this.p.set(e.pointerId, { x: q.x, y: q.y, x0: q.x, y0: q.y, t0: performance.now() });
     this.view.anim = null;
-    this.kind = this.p.size === 2 ? 'two?' : this.p.size === 1 ? 'one' : this.kind;
+    if (this.p.size === 2) { this.kind = 'two?'; this.twist = 0; this.rotating = false; }
+    else if (this.p.size === 1) this.kind = e.pointerType === 'mouse' && (e.button === 2 || e.shiftKey) ? 'mrot' : 'one';
     this.moved = false;
     this.hooks.onInteract?.();
   }
@@ -48,9 +56,9 @@ export class Gestures {
     const px = s.x, py = s.y;
     if (Math.hypot(q.x - s.x0, q.y - s.y0) > 7) this.moved = true;
     const v = this.view;
-    if (this.p.size === 1 && this.kind === 'one') {
-      if (this.mode === 'explore') {
-        v.rig.yaw -= (q.x - px) * 0.006;
+    if (this.p.size === 1 && (this.kind === 'one' || this.kind === 'mrot')) {
+      if (this.mode === 'explore' || this.kind === 'mrot') {
+        v.rig.yaw += (q.x - px) * 0.006;
         v.rig.tilt += (q.y - py) * 0.004;
       } else {
         const A = v.screenToPlane(px, py, v.floorY, this.a), B = v.screenToPlane(q.x, q.y, v.floorY, this.b);
@@ -63,9 +71,9 @@ export class Gestures {
     }
     if (this.p.size !== 2) { s.x = q.x; s.y = q.y; return; }
     const [p1, p2] = [...this.p.values()];
-    const before = { cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2, d: Math.hypot(p1.x - p2.x, p1.y - p2.y) };
+    const before = { cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2, d: Math.hypot(p1.x - p2.x, p1.y - p2.y), a: Math.atan2(p2.y - p1.y, p2.x - p1.x) };
     s.x = q.x; s.y = q.y;
-    const after = { cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2, d: Math.hypot(p1.x - p2.x, p1.y - p2.y) };
+    const after = { cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2, d: Math.hypot(p1.x - p2.x, p1.y - p2.y), a: Math.atan2(p2.y - p1.y, p2.x - p1.x) };
     if (this.kind === 'two?') {
       const d1 = { x: p1.x - p1.x0, y: p1.y - p1.y0 }, d2 = { x: p2.x - p2.x0, y: p2.y - p2.y0 };
       const m1 = Math.hypot(d1.x, d1.y), m2 = Math.hypot(d2.x, d2.y);
@@ -80,8 +88,13 @@ export class Gestures {
     if (this.kind === 'tilt') {
       v.rig.tilt -= (after.cy - before.cy) * 0.007;
     } else if (this.kind === 'pinch') {
+      // zoom, twist and pan together, keeping the map point between the fingers under the fingers
       const A = v.screenToPlane(before.cx, before.cy, v.floorY, this.a)?.clone();
       if (before.d > 0 && after.d > 0) v.rig.dist *= before.d / after.d;
+      const da = wrap(after.a - before.a);
+      this.twist += da;
+      if (!this.rotating && Math.abs(this.twist) > TWIST_START) this.rotating = true;
+      if (this.rotating) v.rig.yaw += da;
       v.clampRig();
       const B = v.screenToPlane(after.cx, after.cy, v.floorY, this.b);
       if (A && B) { v.rig.x += A.x - B.x; v.rig.z += A.z - B.z; }
@@ -117,7 +130,7 @@ export class Gestures {
 
   doubleTap(x, y) {
     const v = this.view;
-    if (v.rig.dist < v.fitDist * 0.62) { v.fit(v.rig.tilt); return; }
+    if (v.rig.dist < v.fitDist * 0.62) { v.fit(v.rig.tilt, 450, v.rig.yaw); return; }
     const P = v.screenToPlane(x, y);
     if (!P) return;
     v.animateTo({ x: P.x, z: P.z, dist: v.rig.dist * 0.45 }, 380);

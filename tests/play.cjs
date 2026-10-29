@@ -44,6 +44,7 @@ const log = (...a) => console.log(...a);
   const G = (fn, arg) => page.evaluate(fn, arg);
   const shot = async name => { await sleep(350); await page.screenshot({ path: `${out}/${name}.png` }); log('shot', name); };
   const results = [];
+  let placedWhileTurned = null;
   const check = (name, ok, extra = '') => { results.push([name, ok]); log(ok ? 'PASS' : 'FAIL', name, extra); };
 
   await page.goto(url + '?reset&lowpower', { waitUntil: 'load' });
@@ -123,6 +124,54 @@ const log = (...a) => console.log(...a);
   check('two fingers up tilt the view', t1 > t0 + 0.2, `${t0.toFixed(2)} -> ${t1.toFixed(2)}`);
   await shot('06_zoom_tilt');
 
+  // twist with two fingers: the map turns with them
+  await G(() => window.__game.view.fit(0, 10));
+  await sleep(300);
+  const y0 = await G(() => window.__game.view.rig.yaw);
+  {
+    const c = { x: 206, y: 470 }, r = 70, a0 = Math.PI, a1 = Math.PI + 1.0;   // +1 rad = clockwise on screen
+    const pt = (a, s) => ({ x: c.x + Math.cos(a) * r * s, y: c.y + Math.sin(a) * r * s });
+    await touch('touchStart', [{ ...pt(a0, 1), id: 1 }, { ...pt(a0 + Math.PI, 1), id: 2 }]);
+    for (let i = 1; i <= 16; i++) {
+      const a = a0 + (a1 - a0) * i / 16;
+      await touch('touchMove', [{ ...pt(a, 1), id: 1 }, { ...pt(a + Math.PI, 1), id: 2 }]);
+      await sleep(16);
+    }
+    await touch('touchEnd', []);
+    await sleep(200);
+  }
+  const y1 = await G(() => window.__game.view.rig.yaw);
+  const na1 = await G(() => window.__game.view.northAngle());
+  check('two-finger twist turns the map clockwise', y1 - y0 > 0.7 && na1 > 0.7, `yaw ${y0.toFixed(2)} -> ${y1.toFixed(2)}, north at ${(na1 * 180 / Math.PI).toFixed(0)} deg`);
+  await page.tap('#bNorth');
+  await sleep(700);
+  const na2 = await G(() => window.__game.view.northAngle());
+  check('compass puts north back up', Math.abs(na2) < 0.03, `${(na2 * 180 / Math.PI).toFixed(1)} deg`);
+  await page.tap('#bTurn');
+  await sleep(700);
+  const na3 = await G(() => window.__game.view.northAngle());
+  check('turn button turns a quarter clockwise', Math.abs(na3 - Math.PI / 2) < 0.03, `${(na3 * 180 / Math.PI).toFixed(1)} deg`);
+  const z0 = await G(() => window.__game.view.rig.dist);
+  await page.tap('#bZin'); await sleep(500);
+  const z1 = await G(() => window.__game.view.rig.dist);
+  await page.tap('#bZout'); await sleep(500);
+  const z2 = await G(() => window.__game.view.rig.dist);
+  check('zoom buttons', z1 < z0 * 0.7 && z2 > z1 * 1.4, `${z0.toFixed(0)} -> ${z1.toFixed(0)} -> ${z2.toFixed(0)}`);
+  await shot('06b_turned');
+  // place a piece while the map is turned
+  {
+    const st2 = await G(() => window.__game.state);
+    const code = st2.order.find(c => !st2.placed.includes(c) && c !== st2.order[1] && c !== st2.order[2]);
+    await dragToPlace(code);
+    await touch('touchEnd', []);
+    await sleep(500);
+    const st3 = await G(() => window.__game.state);
+    check('place a piece on the turned map', st3.placed.includes(code), code);
+    placedWhileTurned = code;
+  }
+  await page.tap('#bNorth');
+  await sleep(600);
+
   // place a piece while zoomed in and tilted
   const third = order[2];
   await G(c => { const p = window.__game.pieces.get(c).target; window.__game.view.animateTo({ x: p.x, z: p.z }, 10); }, third);
@@ -159,7 +208,7 @@ const log = (...a) => console.log(...a);
   await page.tap('#bContinue');
   await page.waitForFunction(() => window.__game.state.mode === 'play');
   st = await G(() => window.__game.state);
-  check('resume keeps placed pieces', st.placed.length === 2 && st.hints === 1, `${st.placed.length} placed`);
+  check('resume keeps placed pieces', st.placed.length === 3 && st.hints === 1, `${st.placed.length} placed`);
 
   // finish: place all but one, drag the last
   const left = st.order.filter(c => !st.placed.includes(c));
