@@ -67,23 +67,56 @@ export class ArMode {
   get active() { return !!this.session; }
 
   async start() {
-    if (this.session) return;
+    if (this.session || this.starting) return;
+    this.starting = true;
     const v = this.view, r = v.renderer;
-    const session = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['hit-test', 'dom-overlay'],
-      domOverlay: { root: document.getElementById('ui') },
-    });
-    this.session = session;
-    session.addEventListener('end', () => this.cleanup());
-    r.xr.setReferenceSpaceType('local');
-    await r.xr.setSession(session);
-    const viewer = await session.requestReferenceSpace('viewer');
-    this.hitSource = await session.requestHitTestSource({ space: viewer });
-    v.setAR(true);
-    this.placed = false;
-    v.world.visible = false;
-    this.setSize(this.size, false);
-    this.hooks.onStart?.();
+    let session = null;
+    try {
+      // Ask for as little as possible up front (a phone refuses a session whose *required*
+      // features it lacks), then use whatever the phone grants. This must be the first await
+      // after the tap, or Chrome no longer counts it as the player's own request.
+      session = await navigator.xr.requestSession('immersive-ar', {
+        optionalFeatures: ['hit-test', 'dom-overlay'],
+        domOverlay: { root: document.getElementById('ui') },
+      });
+      this.features = Array.from(session.enabledFeatures || []);
+      this.overlay = !!session.domOverlayState;
+      if (!this.overlay) {
+        // without the overlay the drawer and buttons can't show over the camera: explain instead
+        const e = new Error('The phone did not allow buttons over the camera (dom-overlay).');
+        e.name = 'NoOverlay';
+        throw e;
+      }
+      this.session = session;
+      session.addEventListener('end', () => this.cleanup());
+      r.xr.setReferenceSpaceType('local');
+      await r.xr.setSession(session);
+      try {
+        const viewer = await session.requestReferenceSpace('viewer');
+        this.hitSource = await session.requestHitTestSource({ space: viewer });
+      } catch {
+        this.hitSource = null;    // no surface finding: the tray waits in front of the phone instead
+      }
+      v.setAR(true);
+      this.placed = false;
+      v.world.visible = false;
+      this.setSize(this.size, false);
+      this.hooks.onStart?.(!!this.hitSource);
+    } catch (err) {
+      if (session) {
+        err.info = this.describe();
+        if (!this.session) session.end().catch(() => {});   // a started session ends itself through cleanup
+        else this.end();
+      }
+      throw err;
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  describe() {
+    const chrome = (navigator.userAgent.match(/Chrome\/([\d.]+)/) || [])[1] || '?';
+    return `features: ${(this.features || []).join(', ') || 'none'}; overlay: ${this.overlay ? 'yes' : 'no'}; Chrome ${chrome}`;
   }
 
   end() { this.session?.end().catch(() => {}); }
@@ -101,9 +134,28 @@ export class ArMode {
 
   // called every XR frame: keep the reticle on the surface the phone points at
   onFrame(frame) {
-    if (!this.session || !frame || this.placed || !this.hitSource) return;
-    const res = frame.getHitTestResults(this.hitSource);
+    if (!this.session || !frame || this.placed) return;
     const space = this.view.renderer.xr.getReferenceSpace();
+    if (!space) return;
+    if (!this.hitSource) {
+      // no surface finding on this phone: keep the spot 55 cm ahead and 45 cm below the phone
+      const vp = frame.getViewerPose(space);
+      if (!vp) return;
+      const m = new THREE.Matrix4().fromArray(vp.transform.matrix);
+      const pos = new THREE.Vector3().setFromMatrixPosition(m);
+      const fwd = new THREE.Vector3(0, 0, -1).transformDirection(m);
+      fwd.y = 0;
+      if (fwd.lengthSq() < 1e-4) fwd.set(0, 0, -1);
+      fwd.normalize();
+      const p = pos.addScaledVector(fwd, 0.55);
+      p.y -= 0.45;
+      this.reticle.matrix.makeTranslation(p.x, p.y, p.z);
+      this.hasHit = true;
+      this.reticle.visible = true;
+      this.hooks.onSurface?.(true);
+      return;
+    }
+    const res = frame.getHitTestResults(this.hitSource);
     const pose = res.length ? res[0].getPose(space) : null;
     this.hasHit = !!pose;
     this.reticle.visible = !!pose;
@@ -132,7 +184,7 @@ export class ArMode {
   replace() {
     this.placed = false;
     this.view.world.visible = false;
-    this.hooks.onStart?.();
+    this.hooks.onStart?.(!!this.hitSource);
   }
 
   setSize(m, keep = true) {

@@ -42,10 +42,10 @@ if (USE_SW) {
 }
 const LOW = params.has('lowpower');   // no antialiasing, 1x pixels, no idle animation (slow devices, tests)
 const view = new View(canvas, { low: LOW });
-let lastFound = null;
+let lastFound = null, arFloat = false;
 const ar = new ArMode(view, {
-  onStart() { document.body.dataset.ar = 'placing'; $('#arHint').textContent = t('arPoint'); syncArSizes(); layout(); },
-  onSurface(found) { if (document.body.dataset.ar === 'placing' && found !== lastFound) { lastFound = found; $('#arHint').textContent = t(found ? 'arFound' : 'arPoint'); } },
+  onStart(canFind = true) { document.body.dataset.ar = 'placing'; lastFound = null; arFloat = !canFind; $('#arHint').textContent = t(canFind ? 'arPoint' : 'arFloat'); syncArSizes(); layout(); },
+  onSurface(found) { if (document.body.dataset.ar === 'placing' && found !== lastFound) { lastFound = found; $('#arHint').textContent = t(arFloat ? 'arFloat' : found ? 'arFound' : 'arPoint'); } },
   onPlaced() { document.body.dataset.ar = 'on'; $('#arHint').textContent = ''; toast(t('arPlaced'), 3600); sound.drop(); buzz(20); },
   onSize() { syncArSizes(); },
   onEnd() { delete document.body.dataset.ar; $('#arHint').textContent = ''; lastFound = null; layout(); if (mode === 'play') view.fit(0, 10); },
@@ -725,7 +725,13 @@ function wireUI() {
     if (ar.active) { ar.end(); return; }
     if (!arState) arState = await ArMode.check();
     if (!arState.ok) { showArInfo(arState.reason); return; }
-    ar.start().catch(err => { console.warn('AR', err); showArInfo('start', String(err && (err.message || err.name) || '')); });
+    ar.start().catch(err => {
+      console.warn('AR', err);
+      const name = err && err.name || 'Error';
+      const reason = name === 'NoOverlay' ? 'overlay' : (name === 'NotAllowedError' || name === 'SecurityError') ? 'denied' : 'start';
+      const chrome = (navigator.userAgent.match(/Chrome\/([\d.]+)/) || [])[1] || '?';
+      showArInfo(reason, `${name}: ${err && err.message || ''}${err && err.info ? ' · ' + err.info : ' · Chrome ' + chrome}`);
+    });
   });
   $('#bArExit').addEventListener('click', () => ar.end());
   $('#bArMove').addEventListener('click', () => ar.replace());

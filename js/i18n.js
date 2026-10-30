@@ -59,7 +59,10 @@ export const TEXT = {
     arWhy_ios: 'Na iPhoneu AR za web stranice još ne radi. Igra normalno radi na ekranu.',
     arWhy_desktop: 'AR radi na Android telefonu, u Google Chromeu.',
     arWhy_secure: 'AR radi samo na sigurnoj (https) adresi igre.',
-    arWhy_start: 'AR se nije pokrenuo. Provjeri da je Chromeu dozvoljena kamera, pa pokušaj ponovo.',
+    arWhy_start: 'AR se nije pokrenuo. Ako je telefon upravo pitao za kameru, dozvoli je i dodirni AR još jednom.',
+    arWhy_denied: 'Chrome nema dozvolu za kameru. Dozvoli je (Podešavanja telefona → Aplikacije → Chrome → Dozvole → Kamera), pa dodirni AR ponovo.',
+    arWhy_overlay: 'Na ovom telefonu Chrome ne može prikazati dugmad i ladicu preko kamere, pa igra u AR-u ne radi.',
+    arFloat: 'Podloga čeka ispred telefona. Nanišani mjesto na stolu i dodirni ekran.',
   },
   sq: {
     title: 'Bashko Gucinë',
@@ -120,7 +123,10 @@ export const TEXT = {
     arWhy_ios: 'Në iPhone AR për faqet e internetit ende nuk punon. Loja punon normalisht në ekran.',
     arWhy_desktop: 'AR punon në telefon Android, në Google Chrome.',
     arWhy_secure: 'AR punon vetëm në adresën e sigurt (https) të lojës.',
-    arWhy_start: 'AR nuk u nis. Kontrollo që Chrome ka leje për kamerën, pastaj provo përsëri.',
+    arWhy_start: 'AR nuk u nis. Nëse telefoni sapo kërkoi leje për kamerën, lejoje dhe prek AR edhe një herë.',
+    arWhy_denied: 'Chrome nuk ka leje për kamerën. Lejoje (Cilësimet e telefonit → Aplikacionet → Chrome → Lejet → Kamera), pastaj prek AR përsëri.',
+    arWhy_overlay: 'Në këtë telefon Chrome nuk mund t\'i shfaqë butonat dhe sirtarin mbi kamerë, prandaj loja në AR nuk punon.',
+    arFloat: 'Tabakaja pret para telefonit. Synoje vendin në tavolinë dhe prek ekranin.',
   },
   en: {
     title: 'Gusinje Puzzle',
@@ -181,7 +187,10 @@ export const TEXT = {
     arWhy_ios: "On iPhone, AR for web pages doesn't work yet. The game works normally on the screen.",
     arWhy_desktop: 'AR works on an Android phone, in Google Chrome.',
     arWhy_secure: "AR only works on the game's secure (https) address.",
-    arWhy_start: "AR didn't start. Check that Chrome is allowed to use the camera, then try again.",
+    arWhy_start: "AR didn't start. If the phone just asked about the camera, allow it and tap AR once more.",
+    arWhy_denied: "Chrome isn't allowed to use the camera. Allow it (phone Settings → Apps → Chrome → Permissions → Camera), then tap AR again.",
+    arWhy_overlay: "On this phone Chrome can't show the buttons and drawer over the camera, so the game can't run in AR.",
+    arFloat: 'The tray waits in front of the phone. Aim at a spot on the table and tap the screen.',
   },
 };
 
