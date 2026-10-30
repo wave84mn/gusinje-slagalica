@@ -1,4 +1,4 @@
-// Texts: Montenegrin/Bosnian (Latin) and English.
+// Texts: Montenegrin/Bosnian (Latin), Albanian and English.
 export const TEXT = {
   me: {
     title: 'Slagalica Gusinje',
@@ -52,6 +52,59 @@ export const TEXT = {
     yes: 'Da', no: 'Ne',
     offlineReady: 'Igra radi i bez interneta.',
     exploreHint: 'Jedan prst okreće, dva zumiraju. Dodirni ime za više.',
+  },
+  sq: {
+    title: 'Bashko Gucinë',
+    subtitle: 'Bashko 64 copat e Gucisë',
+    loading: 'Duke u ngarkuar…',
+    continue: 'Vazhdo',
+    newGame: 'Lojë e re',
+    chooseLevel: 'Zgjidh nivelin',
+    easy: 'Lehtë', easyD: 'Harta dhe kodet e copave në tabaka',
+    normal: 'Mesatar', normalD: 'Pa hartë në tabaka',
+    hard: 'Vështirë', hardD: 'Pa hartë, dhe copat janë të kthyera',
+    howTo: 'Si luhet',
+    help1: 'Tërhiq një copë lart nga sirtari dhe lëshoje në vendin e saj në hartë.',
+    help2: 'Dy gishta: zmadho, rrotullo dhe lëviz hartën. Prekje e dyfishtë: zmadhim.',
+    help6: 'Butonat anësorë: zmadho, zvogëlo, rrotullo hartën; busulla e kthen veriun lart.',
+    north: 'Veriu lart', turn: 'Rrotullo hartën', zoomIn: 'Zmadho', zoomOut: 'Zvogëlo',
+    ar: 'Luaj në tavolinë (AR)', arSize: 'Madhësia e tabakasë',
+    arPoint: 'Drejtoje telefonin nga tavolina ose dyshemeja, lëvize ngadalë, pastaj prek ekranin për të vendosur tabakanë.',
+    arFound: 'Prek ekranin për ta vendosur tabakanë këtu.',
+    arPlaced: 'Një gisht e lëviz tabakanë, dy gishta e zmadhojnë dhe e rrotullojnë.',
+    arMove: 'Zhvendose', arExit: 'Dil nga AR',
+    arFail: 'AR nuk mund të niset në këtë telefon.',
+    arNote: 'Në lojë prek AR që ta bashkosh Gucinë në një tavolinë të vërtetë.',
+    help3: 'Të dy gishtat lart ose poshtë: anoje pamjen.',
+    help4: 'Në nivelin e vështirë prek copën në sirtar për ta rrotulluar.',
+    help5: 'Llamba tregon ku shkon një copë. Fotografia tregon hartën e plotë.',
+    go: 'Fillo',
+    placed: 'vendosur',
+    hint: 'Ndihmë',
+    picture: 'Fotografia',
+    view: 'Pamja',
+    menu: 'Menyja',
+    notHere: 'Jo këtu',
+    turnIt: 'Rrotulloje',
+    bravo: 'Bravo!',
+    doneText: 'Gucia u bashkua.',
+    time: 'Koha', best: 'Më e mira', hints: 'Ndihmë',
+    explore: 'Shiko përreth',
+    playAgain: 'Luaj përsëri',
+    back: 'Kthehu',
+    close: 'Mbyll',
+    sound: 'Zëri', on: 'i ndezur', off: 'i fikur',
+    language: 'Gjuha',
+    about: 'Rreth lojës',
+    aboutText: 'Version digjital i lojës me copa të Gucisë, të printuar në 3D: 64 copë, si në tabakanë e vërtetë.',
+    credits: 'Harta: © kontribuuesit e OpenStreetMap (ODbL). Terreni: Copernicus DEM. 3D: three.js.',
+    standin: 'Version prove: copa të përkohshme derisa të vijnë modelet e vërteta.',
+    onPiece: 'Në copën',
+    soon: 'Më shumë për këtë së shpejti në aplikacionin e muzeut.',
+    restartQ: 'Të fillosh nga e para?',
+    yes: 'Po', no: 'Jo',
+    offlineReady: 'Loja tani punon edhe pa internet.',
+    exploreHint: 'Një gisht rrotullon, dy gishta zmadhojnë. Prek një emër për më shumë.',
   },
   en: {
     title: 'Gusinje Puzzle',
@@ -109,7 +162,8 @@ export const TEXT = {
 };
 
 let lang = 'me';
-export function setLang(l) { lang = TEXT[l] ? l : 'me'; document.documentElement.lang = lang === 'me' ? 'sr-Latn-ME' : 'en'; apply(); }
+const HTML_LANG = { me: 'sr-Latn-ME', sq: 'sq', en: 'en' };
+export function setLang(l) { lang = TEXT[l] ? l : 'me'; document.documentElement.lang = HTML_LANG[lang]; document.title = TEXT[lang].title; apply(); }
 export function getLang() { return lang; }
 export function t(key) { return TEXT[lang][key] ?? TEXT.me[key] ?? key; }
 export function apply(root = document) {

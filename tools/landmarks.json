@@ -4,7 +4,8 @@
   "piece": "D4",
   "name": {
    "me": "Vezirova džamija",
-   "en": "Vezir's Mosque"
+   "en": "Vezir's Mosque",
+   "sq": "Xhamia e Vezirit"
   },
   "pos": [
    -14.9,
@@ -17,7 +18,8 @@
   "piece": "F4",
   "name": {
    "me": "Radončića džamija",
-   "en": "Radončić Mosque"
+   "en": "Radončić Mosque",
+   "sq": "Xhamia e Radonçiqëve"
   },
   "pos": [
    28.5,
@@ -30,7 +32,8 @@
   "piece": "E4",
   "name": {
    "me": "Opština",
-   "en": "Town Hall"
+   "en": "Town Hall",
+   "sq": "Komuna"
   },
   "pos": [
    19.8,
@@ -43,7 +46,8 @@
   "piece": "E4",
   "name": {
    "me": "Kula Rašića",
-   "en": "Rašić Tower House"
+   "en": "Rašić Tower House",
+   "sq": "Kulla e Rashiqëve"
   },
   "pos": [
    -0.4,
@@ -56,7 +60,8 @@
   "piece": "E3",
   "name": {
    "me": "Balića kuća",
-   "en": "Balić House"
+   "en": "Balić House",
+   "sq": "Shtëpia e Baliqëve"
   },
   "pos": [
    23.1,
@@ -69,7 +74,8 @@
   "piece": "E2",
   "name": {
    "me": "Sahat kula",
-   "en": "Clock Tower"
+   "en": "Clock Tower",
+   "sq": "Kulla e Sahatit"
   },
   "pos": [
    13.1,
@@ -82,7 +88,8 @@
   "piece": "F6",
   "name": {
    "me": "Čekića džamija",
-   "en": "Čekić Mosque"
+   "en": "Čekić Mosque",
+   "sq": "Xhamia e Çekiqëve"
   },
   "pos": [
    36.5,
@@ -95,7 +102,8 @@
   "piece": "C5",
   "name": {
    "me": "Crkva sv. Đorđa",
-   "en": "St George's Church"
+   "en": "St George's Church",
+   "sq": "Kisha e Shën Gjergjit"
   },
   "pos": [
    -53.6,
@@ -108,7 +116,8 @@
   "piece": "B3",
   "name": {
    "me": "Groblje",
-   "en": "Cemetery"
+   "en": "Cemetery",
+   "sq": "Varrezat"
   },
   "pos": [
    -100.4,
@@ -121,7 +130,8 @@
   "piece": "D2",
   "name": {
    "me": "Sportski tereni",
-   "en": "Sports courts"
+   "en": "Sports courts",
+   "sq": "Fushat sportive"
   },
   "pos": [
    -30.0,
@@ -134,7 +144,8 @@
   "piece": "D2",
   "name": {
    "me": "Titex",
-   "en": "Titex factory"
+   "en": "Titex factory",
+   "sq": "Titex"
   },
   "pos": [
    -15.3,

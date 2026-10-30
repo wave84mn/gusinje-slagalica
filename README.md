@@ -14,6 +14,7 @@ The 3D-printed Gusinje jigsaw (64 pieces in a 300 × 300 mm tray), played on a p
 - Turn the tray with a two-finger twist or the side buttons (zoom in/out, quarter turn, compass for north up).
 - **AR** (Chrome on Android phones with ARCore): tap **AR** in the game, point the phone at a table or the floor, and tap to put the tray down. Sizes 30 cm (real), 60 cm, 1 m or 2 m; pinch to resize, twist to turn, one finger to slide it. The drawer works as usual. The AR button only appears on phones that support it.
 - Sounds: pick up, put down, knobs clicking into neighbours (higher with more neighbours), victory fanfare. All synthesized; the menu turns them off.
+- Languages: Montenegrin/Bosnian, Albanian and English (ME / SQ / EN on the start screen and in the menu). On a first visit it starts in the phone's language: Albanian phones in SQ, English-only phones in EN, others in ME. The choice is remembered.
 
 ## Files
 - `index.html`, `css/`, `js/`: the game (three.js r184, MIT, in `js/vendor/three`).
@@ -39,6 +40,7 @@ On screen the filament colours are slightly softened (`SCREEN` in `tools/convert
 - `tests/look.cjs <url>`: screenshots of the main screens.
 - `tests/ar_sim.cjs <url>`: the AR maths and AR touch gestures, checked without a phone (real AR needs an Android phone).
 - `tests/sfx.cjs <url> <wav>`: renders the sound effects, checks levels, writes a preview.
+- `tests/lang.cjs <url>`: the three languages, the phone-language start and the Albanian landmark names.
 - `tools/standin.py`: the stand-in pieces used before the real files arrived.
 
 Map data © OpenStreetMap contributors (ODbL). Terrain: Copernicus DEM.

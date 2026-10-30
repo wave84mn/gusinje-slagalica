@@ -58,7 +58,17 @@ let puzzle, dataId, pieces = new Map(), board, guide, blob, ghost = null;
 let mode = 'loading';            // loading | attract | play | explore
 let drag = null, press = null;
 const tweens = [];
-let prefs = store.get('slagalica.prefs', { lang: 'me', sound: true, seenHelp: false });
+// First visit: start in the phone's language when it is Albanian or English-only; Montenegrin/Bosnian otherwise.
+function phoneLang() {
+  for (const l of navigator.languages || [navigator.language || '']) {
+    const c = String(l).toLowerCase().slice(0, 3).replace(/[-_].*/, '');
+    if (c === 'sq') return 'sq';
+    if (['sr', 'bs', 'hr', 'me', 'cnr', 'sh', 'sl', 'mk'].includes(c)) return 'me';
+  }
+  const first = String((navigator.languages || [])[0] || navigator.language || '').toLowerCase();
+  return first.startsWith('en') ? 'en' : 'me';
+}
+let prefs = store.get('slagalica.prefs', null) || { lang: phoneLang(), sound: true, seenHelp: false };
 const state = { level: 'easy', order: [], placed: new Set(), rot: {}, elapsed: 0, hints: 0, done: false, started: false, lastTried: null };
 
 // ------------------------------------------------------------------ loading

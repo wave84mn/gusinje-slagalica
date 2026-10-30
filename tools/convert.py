@@ -153,7 +153,7 @@ def main(pieces_3mf, tray_3mf, positions, out, landmarks=None):
     print("tray:", ts)
 
     meta = {"version": 1, "id": "gusinje-64-v1", "units": "mm",
-            "title": {"me": "Slagalica Gusinje", "en": "Gusinje Puzzle"},
+            "title": {"me": "Slagalica Gusinje", "sq": "Bashko Gucinë", "en": "Gusinje Puzzle"},
             "tray": {"size": [300, 300], "inner": [-POCKET, -POCKET, POCKET, POCKET], "floorY": FLOOR, "rimY": 15.9},
             "guide": {"line": "rgba(255,240,218,0.82)", "text": "rgba(255,240,218,0.7)"},
             "grid": {"cols": 8, "rows": 8},
