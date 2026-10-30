@@ -1,9 +1,10 @@
 """QR cards for the game: one for Android phones (opens the game in Chrome, ready for AR) and one
-for Windows. Xplore Prokletije sits in the middle of each code; the game's name and the platform
+for Windows. The Xplore Prokletije logo (source/brand/xplore_parts.json, from tools/logo_trace.py) sits in
+the middle of each code, in the card's ink and ochre; the game's name and the platform
 are written underneath. Writes build/qr/*.html; tools/qr_render.cjs turns them into PNG and PDF,
 and this script's --check reads the PNGs back.
 usage: python3 tools/make_qr.py            (then node tools/qr_render.cjs, python3 tools/make_qr.py --check)"""
-import os, sys, cv2, numpy as np
+import json, os, sys, cv2, numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "build", "qr")
@@ -14,6 +15,8 @@ CARDS = [
 ]
 INK = "#1d1a16"
 OCHRE = "#c98f2c"
+with open(os.path.join(ROOT, "source", "brand", "xplore_parts.json")) as f:
+    LOGO = json.load(f)
 
 def matrix(text):
     p = cv2.QRCodeEncoder_Params()
@@ -26,8 +29,8 @@ def matrix(text):
 def qr_svg(m, quiet=4):
     n = m.shape[0]
     size = n + 2 * quiet
-    # the mark: a white plate over the middle (about 10 % of the code, well inside level H)
-    pw, ph = 17, 11
+    # the mark: a white plate over the middle (about 11 % of the code, well inside level H)
+    pw, ph = 21, 9
     px, py = quiet + (n - pw) / 2, quiet + (n - ph) / 2
     m = m.copy()
     m[int(py - quiet):int(py - quiet + ph), int(px - quiet):int(px - quiet + pw)] = False   # nothing peeks out under the plate
@@ -41,16 +44,18 @@ def qr_svg(m, quiet=4):
                 rects.append(f'<rect x="{x0 + quiet}" y="{y + quiet}" width="{x - x0}" height="1"/>')
             else:
                 x += 1
+    # the logo fills the plate, keeping its shape; windows and door show the white plate through
+    vx, vy, vw, vh = LOGO["viewBox"]
+    k = min((pw - 2.4) / vw, (ph - 1.9) / vh)
+    lx, ly = (pw - vw * k) / 2 - vx * k, (ph - vh * k) / 2 - vy * k
     mark = f'''
   <g transform="translate({px} {py})">
-    <rect x="0" y="0" width="{pw}" height="{ph}" rx="1.6" fill="#fff"/>
-    <rect x="0.55" y="0.55" width="{pw - 1.1}" height="{ph - 1.1}" rx="1.2" fill="none" stroke="{OCHRE}" stroke-width="0.32"/>
-    <g transform="translate({pw / 2 - 3.1} 1.55) scale(0.155)">
-      <path d="M1 19L12 5l5 6 6-9 16 17z" fill="{OCHRE}"/>
-      <path d="M20.3 6l2.7-4 2.8 4.1-1.6 1.3-1.2-1.4-1.3 1.6z" fill="#fff"/>
+    <rect x="0" y="0" width="{pw}" height="{ph}" rx="1.5" fill="#fff"/>
+    <rect x="0.35" y="0.35" width="{pw - 0.7}" height="{ph - 0.7}" rx="1.2" fill="none" stroke="#e3d3b2" stroke-width="0.22"/>
+    <g transform="translate({lx:.3f} {ly:.3f}) scale({k:.6f})">
+      <path fill="{INK}" fill-rule="evenodd" d="{LOGO["ink"]}"/>
+      <path fill="{OCHRE}" fill-rule="evenodd" d="{LOGO["accent"]}"/>
     </g>
-    <text x="{pw / 2}" y="6.75" text-anchor="middle" font-family="Inter" font-weight="800" font-size="2.15" letter-spacing="0.42" fill="{INK}">XPLORE</text>
-    <text x="{pw / 2}" y="9.2" text-anchor="middle" font-family="Inter" font-weight="800" font-size="1.62" letter-spacing="0.2" fill="{INK}">PROKLETIJE</text>
   </g>'''
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" shape-rendering="crispEdges">'
             f'<rect width="{size}" height="{size}" fill="#fff"/><g fill="{INK}">{"".join(rects)}</g>'

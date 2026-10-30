@@ -115,11 +115,13 @@ body[data-mode="explore"] #exploreBar { display: flex; }
 .langs button.sel { background: var(--ochre); color: var(--ochre-ink); }
 .langs.top { position: absolute; top: calc(12px + var(--safe-t)); right: calc(12px + var(--safe-r)); }
 #startPanel { padding: 20px calc(18px + var(--safe-r)) calc(16px + var(--safe-b)) calc(18px + var(--safe-l)); text-align: center; max-width: 560px; width: 100%; margin: 0 auto; }
-#startPanel .brand { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 6px; color: var(--ochre);
-  font-size: 12px; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; }
-#startPanel .brand svg { width: 26px; height: 13px; flex: none; }
-#startPanel .brand path { fill: currentColor; }
-#startPanel .brand path.snow { fill: #f3e7cf; }
+/* Xplore Prokletije logo: the tower and "Xplore" in the page's cream, the squares, base and
+   "PROKLETIJE" in ochre; windows and the door are cut out, so the dark shows through them */
+#startPanel .brand { width: min(232px, 60vw); margin: 0 auto 12px; }
+#startPanel .brand svg { display: block; width: 100%; height: auto; stroke: none; overflow: visible;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.55)); }
+#startPanel .brand .ink { fill: var(--ink); }
+#startPanel .brand .acc { fill: var(--ochre); }
 #startPanel h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 9vw, 42px); margin: 0; letter-spacing: 0.01em; }
 .lead { margin: 4px 0 16px; color: var(--mute); }
 #bContinue { margin-bottom: 10px; }

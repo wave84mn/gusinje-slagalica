@@ -4,7 +4,9 @@ The 3D-printed Gusinje jigsaw (64 pieces in a 300 × 300 mm tray), played on a p
 
 **Play:** https://wave84mn.github.io/gusinje-slagalica/
 
-**QR codes** (Xplore Prokletije in the middle), in `qr/`: `slagalica_android.png` opens the game in Chrome on Android phones (other Android browsers hand it over to Chrome, which AR needs), `slagalica_windows.png` opens it in the browser on Windows, and `slagalica_qr_print.pdf` has both on one A4 page (cards 9 cm wide). Rebuild with `python3 tools/make_qr.py && node tools/qr_render.cjs && python3 tools/make_qr.py --check` (the last step reads every code back, also small, blurred, turned and in dim light).
+**QR codes** (the Xplore Prokletije logo in the middle), in `qr/`: `slagalica_android.png` opens the game in Chrome on Android phones (other Android browsers hand it over to Chrome, which AR needs), `slagalica_windows.png` opens it in the browser on Windows, and `slagalica_qr_print.pdf` has both on one A4 page (cards 9 cm wide). Rebuild with `python3 tools/make_qr.py && node tools/qr_render.cjs && python3 tools/make_qr.py --check` (the last step reads every code back, also small, blurred, turned and in dim light).
+
+**Logo**: `source/brand/xplore_prokletije.png` is the project logo. `python3 tools/logo_trace.py` turns it into vector shapes without the background (`source/brand/xplore_parts.json`) and puts it on the start screen, where it takes the game's colours (cream tower, ochre squares and lettering); the QR cards use the same shapes in their ink and ochre.
 
 ## How to play
 - Drag a piece up out of the drawer and drop it in its place. It snaps in when it's close.
