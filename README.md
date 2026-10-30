@@ -4,6 +4,8 @@ The 3D-printed Gusinje jigsaw (64 pieces in a 300 × 300 mm tray), played on a p
 
 **Play:** https://wave84mn.github.io/gusinje-slagalica/
 
+**QR codes** (Xplore Prokletije in the middle), in `qr/`: `slagalica_android.png` opens the game in Chrome on Android phones (other Android browsers hand it over to Chrome, which AR needs), `slagalica_windows.png` opens it in the browser on Windows, and `slagalica_qr_print.pdf` has both on one A4 page (cards 9 cm wide). Rebuild with `python3 tools/make_qr.py && node tools/qr_render.cjs && python3 tools/make_qr.py --check` (the last step reads every code back, also small, blurred, turned and in dim light).
+
 ## How to play
 - Drag a piece up out of the drawer and drop it in its place. It snaps in when it's close.
 - Pinch to zoom, one or two fingers to move, both fingers up or down to tilt. Double tap zooms.
@@ -12,7 +14,7 @@ The 3D-printed Gusinje jigsaw (64 pieces in a 300 × 300 mm tray), played on a p
 - Progress is saved on the phone. When the puzzle is done you can look around the town and tap the landmark names.
 - Placing a piece with a landmark briefly shows its name.
 - Turn the tray with a two-finger twist or the side buttons (zoom in/out, quarter turn, compass for north up).
-- **AR** (Chrome on Android phones with ARCore): tap **AR** in the game, point the phone at a table or the floor, and tap to put the tray down. Sizes 30 cm (real), 60 cm, 1 m or 2 m; pinch to resize, twist to turn, one finger to slide it. The drawer works as usual. The AR button only appears on phones that support it.
+- **AR** (Chrome on Android phones with ARCore): tap **AR** in the game, point the phone at a table or the floor, and tap to put the tray down. Sizes 30 cm (real), 60 cm, 1 m or 2 m; pinch to resize, twist to turn, one finger to slide it. The drawer works as usual. Where Chrome won't show the buttons over the camera, AR starts in table mode: the next 16 pieces wait on the table in front of the tray, drag them in, drag an empty spot to move the tray, hold for a hint, Back exits.
 - Sounds: pick up, put down, knobs clicking into neighbours (higher with more neighbours), victory fanfare. All synthesized; the menu turns them off.
 - Languages: Montenegrin/Bosnian, Albanian and English (ME / SQ / EN on the start screen and in the menu). On a first visit it starts in the phone's language: Albanian phones in SQ, English-only phones in EN, others in ME. The choice is remembered.
 
@@ -41,6 +43,8 @@ On screen the filament colours are slightly softened (`SCREEN` in `tools/convert
 - `tests/ar_sim.cjs <url>`: the AR maths and AR touch gestures, checked without a phone (real AR needs an Android phone).
 - `tests/sfx.cjs <url> <wav>`: renders the sound effects, checks levels, writes a preview.
 - `tests/lang.cjs <url>`: the three languages, the phone-language start and the Albanian landmark names.
+- `tests/ar_start.cjs <url>`: AR start-up with a pretend WebXR: every refusal message, and table mode (when Chrome won't show the buttons over the camera) played start to finish.
+- `tests/qr_link.cjs <url>`: the QR links: Samsung Internet and Firefox on Android hand over to Chrome; Chrome, in-app browsers and Windows stay put.
 - `tools/standin.py`: the stand-in pieces used before the real files arrived.
 
 Map data © OpenStreetMap contributors (ODbL). Terrain: Copernicus DEM.

@@ -12,6 +12,24 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
+<script>
+// QR codes for phones carry ?p=android: on an Android browser that can't do AR (Samsung Internet,
+// Firefox...) the game reopens itself in Chrome. The tag is then dropped from the address.
+(function () {
+  var q = new URLSearchParams(location.search), p = q.get('p');
+  if (!p) return;
+  var ua = navigator.userAgent;
+  var android = /Android/i.test(ua), webview = /; wv\)/.test(ua);
+  var chrome = /Chrome\/\d+/.test(ua) && !/EdgA|OPR|SamsungBrowser|YaBrowser|Firefox|DuckDuckGo|Brave/i.test(ua);
+  if (p === 'android' && android && !chrome && !webview) {
+    var clean = location.origin + location.pathname;
+    location.replace('intent://' + location.host + location.pathname + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(clean) + ';end');
+    return;
+  }
+  var rest = location.search.replace(/([?&])p=[^&]*&?/, '$1').replace(/[?&]$/, '');
+  history.replaceState(null, '', location.pathname + rest + location.hash);
+})();
+</script>
 <script type="importmap">{"imports":{"three":"./js/vendor/three/three.module.min.js","three/addons/":"./js/vendor/three/addons/"}}</script>
 <script type="module" src="js/main.js"></script>
 </head>
