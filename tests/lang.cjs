@@ -38,7 +38,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   }));
   check('start screen in Albanian', s.h1 === 'Bashko Gucinë' && s.lvl.join('|') === 'Lehtë|Mesatar|Vështirë' && s.lang === 'sq' && s.title === 'Bashko Gucinë' && s.sel, JSON.stringify(s));
   await p.screenshot({ path: `${out}/1_start_sq.png` });
-  await p.tap('[data-level="easy"]');
+  await p.tap('[data-level="hard"]');
   await sleep(500);
   const help = await p.textContent('#help h2');
   check('help in Albanian', help === 'Si luhet', help);

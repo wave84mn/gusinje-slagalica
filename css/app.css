@@ -57,7 +57,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .pc .th { width: 80px; height: 80px; display: block; }
 .pc .code { position: absolute; right: 5px; bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: .03em; color: var(--mute);
   background: rgba(20, 17, 13, 0.7); padding: 1px 5px; border-radius: 6px; display: none; pointer-events: none; }
-body[data-level="easy"] .pc .code { display: block; }
+body[data-codes="on"] .pc .code { display: block; }
 .pc.lifted { opacity: 0.25; transform: scale(0.92); }
 .pc.gone { width: 0; margin-left: -8px; opacity: 0; border-width: 0; }
 .pc.shake { animation: shake .36s ease; }

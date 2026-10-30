@@ -17,11 +17,14 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch { /* storage unavailable */ } },
 };
 
-// tol: snap distance in mm; px: minimum snap distance in screen pixels (helps when zoomed out)
+// tol: snap distance in mm; px: minimum snap distance in screen pixels (helps when zoomed out);
+// pre: share of the pieces already in the tray when a game starts. Every level has the guide map
+// and the piece codes; they differ only in how much is done already.
+const PLAIN = { tol: 12, px: 26, rotate: false, guide: true, codes: true };
 const LEVELS = {
-  easy: { tol: 12, px: 26, rotate: false, guide: true, codes: true },
-  normal: { tol: 9, px: 22, rotate: false, guide: false, codes: false },
-  hard: { tol: 8, px: 20, rotate: true, guide: false, codes: false },
+  easy: { ...PLAIN, pre: 0.7 },
+  normal: { ...PLAIN, pre: 0.3 },
+  hard: { ...PLAIN, pre: 0 },
 };
 const HOVER = 7;         // mm a dragged piece floats above the tray
 const UP = new THREE.Vector3(0, 1, 0);
@@ -206,7 +209,19 @@ window.addEventListener('resize', () => { layout(); });
 // ------------------------------------------------------------------ screens
 function savedGame() {
   const s = store.get(`slagalica.game.${dataId}`, null);
-  return s && !s.done && s.placed?.length ? s : null;
+  if (!s || s.done || !s.placed?.length) return null;
+  // games saved before the levels changed (v1): the old Easy is today's Hard, and the old no-map
+  // and turned-piece levels are gone, so those games carry on as Hard with every piece upright
+  if (s.v !== 2 || !LEVELS[s.level]) return { ...s, v: 2, level: 'hard', rot: {} };
+  return s;
+}
+
+// best times per level; the old Easy best (before the levels changed) counts for Hard
+function bests() {
+  const b = store.get(`slagalica.best2.${dataId}`, null);
+  if (b) return b;
+  const old = store.get(`slagalica.best.${dataId}`, {});
+  return old.easy ? { hard: old.easy } : {};
 }
 
 function showStart() {
@@ -250,6 +265,14 @@ function startGame(level, resume) {
   } else {
     state.order = shuffle(codes);
     if (LEVELS[state.level].rotate) for (const c of codes) state.rot[c] = 1 + Math.floor(Math.random() * 3);
+    // Easy and Normal start with part of the puzzle done. The landmark pieces are left for the
+    // player (placing one shows its name); the pieces already in are picked at random from the rest.
+    const pre = Math.round(codes.length * (LEVELS[state.level].pre || 0));
+    if (pre) {
+      const marks = new Set((puzzle.landmarks || []).map(l => l.piece));
+      const pool = shuffle(codes.filter(c => !marks.has(c))).concat(shuffle(codes.filter(c => marks.has(c))));
+      pool.slice(0, pre).forEach(c => state.placed.add(c));
+    }
   }
   for (const p of pieces.values()) {
     p.obj.rotation.set(0, 0, 0);
@@ -258,6 +281,7 @@ function startGame(level, resume) {
   view.renderer.shadowMap.needsUpdate = true;
   document.body.dataset.mode = 'play';
   document.body.dataset.level = state.level;
+  document.body.dataset.codes = LEVELS[state.level].codes ? 'on' : 'off';
   $('#start').hidden = true;
   closeAll();
   mode = 'play';
@@ -284,7 +308,7 @@ function shuffle(a) {
 
 function save() {
   store.set(`slagalica.game.${dataId}`, {
-    v: 1, level: state.level, order: state.order, placed: [...state.placed], rot: state.rot,
+    v: 2, level: state.level, order: state.order, placed: [...state.placed], rot: state.rot,
     elapsed: Math.round(state.elapsed), hints: state.hints, done: state.done,
   });
 }
@@ -703,10 +727,11 @@ function finish() {
   setTimeout(() => sound.victory(), 250); buzz([30, 60, 30, 60, 60]);
   guide.visible = false;
   const lv = state.level;
-  const bestAll = store.get(`slagalica.best.${dataId}`, {});
+  const bestAll = bests();
   const prev = bestAll[lv];
   const isBest = !prev || state.elapsed < prev;
-  if (isBest) { bestAll[lv] = Math.round(state.elapsed); store.set(`slagalica.best.${dataId}`, bestAll); }
+  if (isBest) bestAll[lv] = Math.round(state.elapsed);
+  store.set(`slagalica.best2.${dataId}`, bestAll);
   const stars = state.hints <= 2 ? 3 : state.hints <= 6 ? 2 : 1;
   $('#doneTime').textContent = fmt(state.elapsed);
   $('#doneBest').textContent = fmt(isBest ? state.elapsed : prev) + (isBest ? ' ★' : '');
@@ -943,6 +968,7 @@ function tick(now, frame) {
 // test hooks (used by the automated checks)
 window.__game = {
   get state() { return { ...state, placed: [...state.placed], mode }; },
+  get dataId() { return dataId; }, get landmarks() { return puzzle.landmarks || []; },
   view, pieces, startGame, place, hint, sound, neighbours, ar, layoutBench, benchSlot,
   get bench() { return bench.slice(); },
   screenOf(code) { const p = pieces.get(code); view.applyRig(); const s = view.worldToScreen(p.target); const r = canvas.getBoundingClientRect(); return { x: s.x + r.left, y: s.y + r.top, lift: drag ? liftPx() : null }; },

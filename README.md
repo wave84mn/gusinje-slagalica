@@ -9,7 +9,7 @@ The 3D-printed Gusinje jigsaw (64 pieces in a 300 × 300 mm tray), played on a p
 ## How to play
 - Drag a piece up out of the drawer and drop it in its place. It snaps in when it's close.
 - Pinch to zoom, one or two fingers to move, both fingers up or down to tilt. Double tap zooms.
-- **Lako**: the guide map and piece codes are on the tray, like the printed one. **Srednje**: no guide. **Teško**: no guide, and pieces come turned (tap one in the drawer to turn it).
+- Every level has the guide map and piece codes on the tray, like the printed one; they differ in how much is done already. **Lako**: 70% of the pieces are in (45 of 64). **Srednje**: 30% (19). **Teško**: none. The pieces already in are picked at random, but the landmark pieces are always left for the player. Games and best times saved before this change carry on as Teško.
 - The bulb shows where one piece goes; the picture button shows the finished map.
 - Progress is saved on the phone. When the puzzle is done you can look around the town and tap the landmark names.
 - Placing a piece with a landmark briefly shows its name.
@@ -38,7 +38,7 @@ Tools needed: Python 3 with numpy, opencv and lxml; `gltfpack` and the meshoptim
 On screen the filament colours are slightly softened (`SCREEN` in `tools/convert.py`); set it to `PETG` for the exact print colours.
 
 ## Checks
-- `tests/play.cjs <url>`: plays the game in a phone-size Chromium with real touch events (drag, wrong drop, pinch, pan, tilt, hint, resume, finish, labels, Hard rotation, English).
+- `tests/play.cjs <url>`: plays the game in a phone-size Chromium with real touch events (drag, wrong drop, pinch, pan, tilt, hint, resume, finish, labels, the three levels, old saves, English).
 - `tests/look.cjs <url>`: screenshots of the main screens.
 - `tests/ar_sim.cjs <url>`: the AR maths and AR touch gestures, checked without a phone (real AR needs an Android phone).
 - `tests/sfx.cjs <url> <wav>`: renders the sound effects, checks levels, writes a preview.

@@ -52,8 +52,8 @@ const log = (...a) => console.log(...a);
   await sleep(1500);
   await shot('01_start');
 
-  // start Easy
-  await page.tap('[data-level="easy"]');
+  // start Hard (nothing in the tray yet)
+  await page.tap('[data-level="hard"]');
   await page.waitForFunction(() => window.__game.state.mode === 'play');
   await sleep(500);
   check('help shown first time', await page.isVisible('#help'));
@@ -230,40 +230,64 @@ const log = (...a) => console.log(...a);
   check('landmark labels visible', !!lbl);
   if (lbl && await lbl.evaluate(e => !!e)) { await lbl.asElement().tap(); await sleep(400); check('landmark card opens', await page.isVisible('#card')); await shot('12_card'); await page.tap('#card [data-close]'); }
 
-  // hard level: rotate + wrong rotation message, English
+  // Easy: 70% already in the tray, the landmark pieces left for the player; English
   await page.tap('#bExploreNew');
   await sleep(600);
   await page.tap('#start [data-lang="en"]');
   await sleep(400);
   await shot('13_start_en');
-  await page.tap('[data-level="hard"]');
+  const descs = await page.$$eval('.lvl span', els => els.map(e => e.textContent));
+  check('level texts say how much is done', /70%/.test(descs[0]) && /30%/.test(descs[1]) && /64/.test(descs[2]), descs.join(' | '));
+  await page.tap('[data-level="easy"]');
   await page.waitForFunction(() => window.__game.state.mode === 'play');
   await sleep(900);
   st = await G(() => window.__game.state);
-  const h1 = st.order[0];
-  const r0 = st.rot[h1];
-  await page.tap(`.pc[data-code="${h1}"]`);
-  await sleep(300);
-  st = await G(() => window.__game.state);
-  check('tap rotates on Hard', st.rot[h1] === (r0 + 1) % 4, `${r0} -> ${st.rot[h1]}`);
-  if (st.rot[h1] !== 0) {
-    await dragToPlace(h1);
-    await touch('touchEnd', []);
-    await sleep(300);
-    const txt = await page.textContent('#toast');
-    st = await G(() => window.__game.state);
-    check('wrong rotation rejected with "Turn it"', !st.placed.includes(h1) && /Turn it/.test(txt), txt);
-  }
-  // turn to 0 and place
-  st = await G(() => window.__game.state);
-  let k = st.rot[h1];
-  while (k % 4 !== 0) { await page.tap(`.pc[data-code="${h1}"]`); await sleep(250); k = (await G(() => window.__game.state)).rot[h1]; }
-  await shot('14_hard_en');
-  await dragToPlace(h1);
+  const marks = [...new Set(await G(() => window.__game.landmarks.map(l => l.piece)))];
+  const tiles = await page.$$eval('#strip .pc:not(.gone)', els => els.map(e => e.dataset.code));
+  check('Easy: 45 of 64 already placed, 19 in the drawer', st.placed.length === 45 && tiles.length === 19, `${st.placed.length} placed, ${tiles.length} tiles`);
+  check('Easy: counter starts at 45/64', (await page.textContent('#count')).trim() === '45/64', await page.textContent('#count'));
+  check('Easy: landmark pieces are left for the player', marks.every(c => tiles.includes(c)), marks.filter(c => !tiles.includes(c)).join(','));
+  check('Easy: guide map and piece codes shown', await G(() => document.body.dataset.codes === 'on') && await page.isVisible('#strip .pc .code'));
+  await shot('14_easy_en');
+  await dragToPlace(tiles[0]);
   await touch('touchEnd', []);
   await sleep(500);
   st = await G(() => window.__game.state);
-  check('Hard: place after turning', st.placed.includes(h1));
+  check('Easy: placing a piece from the drawer', st.placed.length === 46 && st.placed.includes(tiles[0]));
+
+  // Normal: 30% already in
+  await page.tap('#bMenu'); await sleep(300);
+  await page.tap('#bMenuNew'); await sleep(600);
+  await page.tap('[data-level="normal"]');
+  await page.waitForFunction(() => window.__game.state.mode === 'play');
+  await sleep(600);
+  st = await G(() => window.__game.state);
+  const tilesN = await page.$$eval('#strip .pc:not(.gone)', els => els.length);
+  check('Normal: 19 already placed, 45 in the drawer', st.placed.length === 19 && tilesN === 45 && st.level === 'normal', `${st.placed.length} placed, ${tilesN} tiles`);
+
+  // a game saved before the levels changed (old Normal, pieces turned) carries on as Hard, upright
+  const did = await G(() => window.__game.dataId);
+  const oldOrder = st.order;
+  await page.goto(url + 'sw.js');          // same site, but no game running that would save over it
+  await page.evaluate(([id, codes]) => {
+    const rot = {}; codes.forEach(c => { rot[c] = 2; });
+    localStorage.setItem(`slagalica.game.${id}`, JSON.stringify({ v: 1, level: 'normal', order: codes, placed: codes.slice(0, 5), rot, elapsed: 61000, hints: 0, done: false }));
+    localStorage.setItem(`slagalica.best.${id}`, JSON.stringify({ easy: 30000, normal: 20000 }));
+    localStorage.removeItem(`slagalica.best2.${id}`);
+  }, [did, oldOrder]);
+  await page.goto(url + '?lowpower', { waitUntil: 'load' });
+  await page.waitForFunction(() => window.__game && window.__game.state.mode === 'attract', null, { timeout: 120000 });
+  await sleep(600);
+  await page.tap('#bContinue');
+  await page.waitForFunction(() => window.__game.state.mode === 'play');
+  await sleep(500);
+  st = await G(() => window.__game.state);
+  check('old save: continues as Hard with pieces upright', st.level === 'hard' && st.placed.length === 5 && Object.keys(st.rot).length === 0, `${st.level}, ${st.placed.length}, rot ${Object.keys(st.rot).length}`);
+  const leftOld = st.order.filter(c => !st.placed.includes(c));
+  await G(cs => cs.forEach(c => window.__game.place(c, false)), leftOld);
+  await sleep(2500);
+  const best = await G(id => JSON.parse(localStorage.getItem(`slagalica.best2.${id}`) || '{}'), did);
+  check('old Easy best time now counts for Hard', best.hard === 30000 && !best.normal && !best.easy, JSON.stringify(best));
 
   const perf = await G(() => ({ calls: window.__game.view.renderer.info.render.calls, tris: window.__game.view.renderer.info.render.triangles }));
   log('render info', JSON.stringify(perf));

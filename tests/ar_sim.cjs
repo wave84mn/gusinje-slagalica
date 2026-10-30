@@ -20,7 +20,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   await page.goto(url + '?reset&lowpower');
   await page.waitForFunction(() => window.__game && window.__game.state.mode === 'attract', null, { timeout: 120000 });
-  await page.tap('[data-level="easy"]');
+  await page.tap('[data-level="hard"]');
   await sleep(500);
   await page.tap('#bHelpGo');
   await sleep(900);

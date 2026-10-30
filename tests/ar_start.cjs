@@ -50,7 +50,7 @@ const fakeXR = (mode) => {
     p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
     await p.goto(url + '?reset&lowpower');
     await p.waitForFunction(() => window.__game && window.__game.state.mode === 'attract', null, { timeout: 120000 });
-    await p.tap('[data-level="easy"]'); await sleep(400);
+    await p.tap('[data-level="hard"]'); await sleep(400);
     await p.tap('#bHelpGo'); await sleep(700);
     return { ctx, p, errors };
   };
