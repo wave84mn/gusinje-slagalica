@@ -63,6 +63,9 @@ export const TEXT = {
     arWhy_denied: 'Chrome nema dozvolu za kameru. Dozvoli je (Podešavanja telefona → Aplikacije → Chrome → Dozvole → Kamera), pa dodirni AR ponovo.',
     arWhy_overlay: 'Na ovom telefonu Chrome ne može prikazati dugmad i ladicu preko kamere, pa igra u AR-u ne radi.',
     arFloat: 'Podloga čeka ispred telefona. Nanišani mjesto na stolu i dodirni ekran.',
+    arBareHelp: 'Prevuci dio sa stola u kutiju. Dodir na prazno mjesto i povlačenje pomjera kutiju, duži dodir daje pomoć. Dugme Nazad izlazi iz AR-a.',
+    arWhy_again: 'AR se nije stigao pokrenuti. Dodirni AR još jednom.',
+    arWhy_blocked: 'Chrome je odbio AR za ovu stranicu. Probaj redom: 1) dodirni ikonicu lijevo od adrese → Dozvole → Resetuj dozvole; 2) potpuno zatvori Chrome (skloni ga iz nedavnih aplikacija) i otvori igru ponovo; 3) ažuriraj „Google Play Services for AR" u Play prodavnici.',
   },
   sq: {
     title: 'Bashko Gucinë',
@@ -127,6 +130,9 @@ export const TEXT = {
     arWhy_denied: 'Chrome nuk ka leje për kamerën. Lejoje (Cilësimet e telefonit → Aplikacionet → Chrome → Lejet → Kamera), pastaj prek AR përsëri.',
     arWhy_overlay: 'Në këtë telefon Chrome nuk mund t\'i shfaqë butonat dhe sirtarin mbi kamerë, prandaj loja në AR nuk punon.',
     arFloat: 'Tabakaja pret para telefonit. Synoje vendin në tavolinë dhe prek ekranin.',
+    arBareHelp: 'Tërhiqe një pjesë nga tavolina në kuti. Prekja e një vendi bosh dhe tërheqja e lëviz kutinë, prekja e gjatë jep ndihmë. Butoni Mbrapa del nga AR.',
+    arWhy_again: 'AR nuk arriti të niset. Prek AR edhe një herë.',
+    arWhy_blocked: 'Chrome e refuzoi AR për këtë faqe. Provo me radhë: 1) prek ikonën majtas adresës → Lejet → Rivendos lejet; 2) mbyll plotësisht Chrome (hiqe nga aplikacionet e fundit) dhe hape lojën përsëri; 3) përditëso „Google Play Services for AR" në Play Store.',
   },
   en: {
     title: 'Gusinje Puzzle',
@@ -191,6 +197,9 @@ export const TEXT = {
     arWhy_denied: "Chrome isn't allowed to use the camera. Allow it (phone Settings → Apps → Chrome → Permissions → Camera), then tap AR again.",
     arWhy_overlay: "On this phone Chrome can't show the buttons and drawer over the camera, so the game can't run in AR.",
     arFloat: 'The tray waits in front of the phone. Aim at a spot on the table and tap the screen.',
+    arBareHelp: 'Drag a piece from the table into the tray. Touch and drag an empty spot to move the tray, hold for a hint. The Back button leaves AR.',
+    arWhy_again: "AR didn't have time to start. Tap AR once more.",
+    arWhy_blocked: 'Chrome refused AR for this page. Try in turn: 1) tap the icon left of the address → Permissions → Reset permissions; 2) close Chrome completely (swipe it out of recent apps) and open the game again; 3) update "Google Play Services for AR" in the Play Store.',
   },
 };
 

@@ -3,6 +3,9 @@
 //   one finger on the empty screen: slide the tray along the surface
 //   two fingers: pinch to resize, twist to turn the tray
 //   size buttons: 30 cm (real size), 60 cm, 1 m, 2 m
+// If Chrome refuses the buttons-over-camera layer (dom-overlay), the game still starts in a simpler
+// "table" mode: the pieces wait on the table in front of the tray and are dragged straight from
+// there, an empty spot drags the tray, a long press shows a hint and the phone's Back button exits.
 import * as THREE from 'three';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -21,6 +24,10 @@ export class ArMode {
     this.placed = false;
     this.hasHit = false;
     this.size = 0.3;                       // metres across the tray
+    this.bare = false;                     // true: no buttons over the camera, play with taps on the scene
+    this.input = null;                     // the touch being followed in table mode
+    this.failed = new Set();               // session settings Chrome refused on this visit
+    this.log = [];
     this.p = new Map();
     this.twist = 0; this.rotating = false;
     this._ray = new THREE.Raycaster();
@@ -38,6 +45,19 @@ export class ArMode {
     ring.renderOrder = sq.renderOrder = 10;
     r.add(ring, sq);
     view.scene.add(r);
+
+    // a short note floating in the scene (table mode has no buttons or text over the camera)
+    const cv = this._noteCanvas = document.createElement('canvas');
+    cv.width = 1024; cv.height = 300;
+    this._noteTex = new THREE.CanvasTexture(cv);
+    this._noteTex.colorSpace = THREE.SRGBColorSpace;
+    const note = this.note = new THREE.Sprite(new THREE.SpriteMaterial({ map: this._noteTex, transparent: true, depthTest: false, depthWrite: false }));
+    note.renderOrder = 20;
+    note.visible = false;
+    note.center.set(0.5, 0);
+    view.scene.add(note);
+    this._noteText = '';
+    this._noteUntil = 0;
 
     const el = this.touchEl = document.getElementById('touch');
     el.addEventListener('pointerdown', e => this.down(e));
@@ -66,29 +86,49 @@ export class ArMode {
 
   get active() { return !!this.session; }
 
+  // Start AR. Chrome is asked for the full game first (buttons over the camera); if it refuses,
+  // the same tap asks again without the overlay (table mode), then with nothing extra at all.
   async start() {
     if (this.session || this.starting) return;
     this.starting = true;
     const v = this.view, r = v.renderer;
+    const ui = document.getElementById('ui');
+    let tries = [
+      { id: 'overlay', init: { optionalFeatures: ['hit-test', 'dom-overlay'], domOverlay: { root: ui } } },
+      { id: 'table', init: { optionalFeatures: ['hit-test'] } },
+      { id: 'plain', init: {} },
+    ];
+    if (tries.every(t => this.failed.has(t.id))) this.failed.clear();
+    tries = tries.filter(t => !this.failed.has(t.id));
+    const log = this.log = [];
     let session = null;
     try {
-      // Ask for as little as possible up front (a phone refuses a session whose *required*
-      // features it lacks), then use whatever the phone grants. This must be the first await
-      // after the tap, or Chrome no longer counts it as the player's own request.
-      session = await navigator.xr.requestSession('immersive-ar', {
-        optionalFeatures: ['hit-test', 'dom-overlay'],
-        domOverlay: { root: document.getElementById('ui') },
-      });
-      this.features = Array.from(session.enabledFeatures || []);
-      this.overlay = !!session.domOverlayState;
-      if (!this.overlay) {
-        // without the overlay the drawer and buttons can't show over the camera: explain instead
-        const e = new Error('The phone did not allow buttons over the camera (dom-overlay).');
-        e.name = 'NoOverlay';
+      for (const t of tries) {
+        const t0 = performance.now();
+        try {
+          // nothing else may be awaited before this: Chrome only starts AR straight after a tap
+          session = await navigator.xr.requestSession('immersive-ar', t.init);
+          log.push(`${t.id}: ok`);
+          break;
+        } catch (err) {
+          log.push(`${t.id}: ${err.name} ${Math.round(performance.now() - t0)}ms`);
+          if (err.name !== 'NotSupportedError') throw err;     // tap too old, camera refused...: stop here
+          this.failed.add(t.id);
+        }
+      }
+      if (!session) {
+        this.failed.clear();
+        const e = new Error('Chrome refused every AR setting.');
+        e.name = 'AllRefused';
         throw e;
       }
+      this.features = Array.from(session.enabledFeatures || []);
+      this.overlay = !!session.domOverlayState;
+      this.bare = !this.overlay;
       this.session = session;
       session.addEventListener('end', () => this.cleanup());
+      session.addEventListener('selectstart', ev => this.select('down', ev));
+      session.addEventListener('selectend', ev => this.select('up', ev));
       r.xr.setReferenceSpaceType('local');
       await r.xr.setSession(session);
       try {
@@ -103,9 +143,9 @@ export class ArMode {
       this.setSize(this.size, false);
       this.hooks.onStart?.(!!this.hitSource);
     } catch (err) {
+      err.log = log.slice();
       if (session) {
-        err.info = this.describe();
-        if (!this.session) session.end().catch(() => {});   // a started session ends itself through cleanup
+        if (!this.session) session.end().catch(() => {});
         else this.end();
       }
       throw err;
@@ -116,7 +156,12 @@ export class ArMode {
 
   describe() {
     const chrome = (navigator.userAgent.match(/Chrome\/([\d.]+)/) || [])[1] || '?';
-    return `features: ${(this.features || []).join(', ') || 'none'}; overlay: ${this.overlay ? 'yes' : 'no'}; Chrome ${chrome}`;
+    return `${this.log.join(', ')}${this.session ? `; features: ${(this.features || []).join(', ') || 'none'}` : ''}; Chrome ${chrome}`;
+  }
+
+  // the camera permission Chrome has for this site: granted, prompt, denied (or ? if unknown)
+  static async cameraState() {
+    try { return (await navigator.permissions.query({ name: 'camera' })).state; } catch { return '?'; }
   }
 
   end() { this.session?.end().catch(() => {}); }
@@ -126,17 +171,25 @@ export class ArMode {
     this.hitSource = null;
     this.session = null;
     this.reticle.visible = false;
+    this.note.visible = false;
+    this.input = null;
     this.p.clear();
     this.view.world.visible = true;
     this.view.setAR(false);
     this.hooks.onEnd?.();
+    this.bare = false;
   }
 
   // called every XR frame: keep the reticle on the surface the phone points at
   onFrame(frame) {
-    if (!this.session || !frame || this.placed) return;
+    if (!this.session || !frame) return;
     const space = this.view.renderer.xr.getReferenceSpace();
     if (!space) return;
+    this.updateNote(frame, space);
+    if (this.placed) {
+      if (this.bare && this.input) this.hooks.onPointer?.('move', this.rayFrom(this.input, frame, space));
+      return;
+    }
     if (!this.hitSource) {
       // no surface finding on this phone: keep the spot 55 cm ahead and 45 cm below the phone
       const vp = frame.getViewerPose(space);
@@ -161,6 +214,82 @@ export class ArMode {
     this.reticle.visible = !!pose;
     if (pose) this.reticle.matrix.fromArray(pose.transform.matrix);
     this.hooks.onSurface?.(this.hasHit);
+  }
+
+  // ---------- table mode (no overlay): taps arrive as WebXR "select" events ----------
+  select(kind, ev) {
+    if (!this.bare || !this.session) return;
+    const space = this.view.renderer.xr.getReferenceSpace();
+    if (!space) return;
+    if (!this.placed) {
+      if (kind === 'up') this.placeAtReticle();
+      return;
+    }
+    if (kind === 'down') {
+      if (this.input) return;
+      this.input = ev.inputSource;
+    } else {
+      if (ev.inputSource !== this.input) return;
+      this.input = null;
+    }
+    this.hooks.onPointer?.(kind, this.rayFrom(ev.inputSource, ev.frame, space));
+  }
+
+  // the line from the phone through the finger, in scene coordinates (metres)
+  rayFrom(input, frame, space) {
+    let pose = null;
+    try { pose = frame.getPose(input.targetRaySpace, space); } catch { pose = null; }
+    if (!pose) return null;
+    const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
+    return new THREE.Ray(new THREE.Vector3().setFromMatrixPosition(m), new THREE.Vector3(0, 0, -1).transformDirection(m));
+  }
+
+  // a note floating in the scene: over the reticle while placing, over the tray for a while after
+  say(text, ms = 0) {
+    this._noteUntil = ms ? performance.now() + ms : 0;
+    if (text === this._noteText) return;
+    this._noteText = text;
+    const cv = this._noteCanvas, g = cv.getContext('2d');
+    g.clearRect(0, 0, cv.width, cv.height);
+    if (!text) return;
+    g.font = '600 54px system-ui, sans-serif';
+    const words = text.split(/\s+/), lines = [];
+    let line = '';
+    for (const w of words) {
+      const tryLine = line ? line + ' ' + w : w;
+      if (g.measureText(tryLine).width > cv.width - 90 && line) { lines.push(line); line = w; } else line = tryLine;
+    }
+    if (line) lines.push(line);
+    const shown = lines.slice(0, 3), lh = 68, h = shown.length * lh + 50;
+    const y0 = cv.height - h;
+    g.fillStyle = 'rgba(28, 24, 19, 0.86)';
+    g.beginPath(); g.roundRect(8, y0, cv.width - 16, h - 8, 34); g.fill();
+    g.strokeStyle = 'rgba(219, 165, 67, 0.9)'; g.lineWidth = 4; g.stroke();
+    g.fillStyle = '#f3e7cf'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    shown.forEach((l, i) => g.fillText(l, cv.width / 2, y0 + 25 + lh * (i + 0.5)));
+    this._noteTex.needsUpdate = true;
+  }
+
+  updateNote(frame, space) {
+    const n = this.note;
+    if (!this.bare || !this._noteText || (this._noteUntil && performance.now() > this._noteUntil)) { n.visible = false; return; }
+    const at = new THREE.Vector3();
+    let width;
+    if (!this.placed) {
+      if (!this.reticle.visible) { n.visible = false; return; }
+      at.setFromMatrixPosition(this.reticle.matrix);
+      at.y += 0.04;
+      width = 0.26;
+    } else {
+      const w = this.view.world;
+      w.updateMatrixWorld();
+      at.set(0, 60, -150);                       // above the far (north) edge of the tray
+      w.localToWorld(at);
+      width = Math.max(0.24, this.size * 0.9);
+    }
+    n.position.copy(at);
+    n.scale.set(width, width * this._noteCanvas.height / this._noteCanvas.width, 1);
+    n.visible = true;
   }
 
   placeAtReticle() {

@@ -44,11 +44,26 @@ const LOW = params.has('lowpower');   // no antialiasing, 1x pixels, no idle ani
 const view = new View(canvas, { low: LOW });
 let lastFound = null, arFloat = false;
 const ar = new ArMode(view, {
-  onStart(canFind = true) { document.body.dataset.ar = 'placing'; lastFound = null; arFloat = !canFind; $('#arHint').textContent = t(canFind ? 'arPoint' : 'arFloat'); syncArSizes(); layout(); },
-  onSurface(found) { if (document.body.dataset.ar === 'placing' && found !== lastFound) { lastFound = found; $('#arHint').textContent = t(arFloat ? 'arFloat' : found ? 'arFound' : 'arPoint'); } },
-  onPlaced() { document.body.dataset.ar = 'on'; $('#arHint').textContent = ''; toast(t('arPlaced'), 3600); sound.drop(); buzz(20); },
+  onStart(canFind = true) {
+    document.body.dataset.ar = 'placing'; lastFound = null; arFloat = !canFind;
+    $('#arHint').textContent = t(canFind ? 'arPoint' : 'arFloat'); syncArSizes(); layout();
+    if (ar.bare) { ar.say(t(canFind ? 'arPoint' : 'arFloat')); layoutBench(); }
+  },
+  onSurface(found) {
+    if (document.body.dataset.ar === 'placing' && found !== lastFound) {
+      lastFound = found;
+      const msg = t(arFloat ? 'arFloat' : found ? 'arFound' : 'arPoint');
+      $('#arHint').textContent = msg;
+      if (ar.bare) ar.say(msg);
+    }
+  },
+  onPlaced() {
+    document.body.dataset.ar = 'on'; $('#arHint').textContent = ''; sound.drop(); buzz(20);
+    if (ar.bare) { layoutBench(); ar.say(t('arBareHelp'), 9000); } else toast(t('arPlaced'), 3600);
+  },
   onSize() { syncArSizes(); },
-  onEnd() { delete document.body.dataset.ar; $('#arHint').textContent = ''; lastFound = null; layout(); if (mode === 'play') view.fit(0, 10); },
+  onPointer(kind, ray) { tableInput(kind, ray); },
+  onEnd() { clearBench(); delete document.body.dataset.ar; $('#arHint').textContent = ''; lastFound = null; layout(); if (mode === 'play') view.fit(0, 10); },
 });
 let arState = null;
 // Tell the player why AR is not available here, with a button that fixes it where possible.
@@ -59,7 +74,7 @@ function showArInfo(reason, detail = '') {
   const android = arState && arState.android;
   chromeLink.hidden = !(android && (reason === 'browser' || reason === 'inapp' || reason === 'arcore'));
   chromeLink.href = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
-  $('#arOpenStore').hidden = !(android && reason === 'arcore');
+  $('#arOpenStore').hidden = !(android && (reason === 'arcore' || reason === 'blocked'));
   openOverlay('#arInfo');
 }
 function syncArSizes() {
@@ -476,6 +491,122 @@ function place(code, animate) {
   if (state.placed.size === pieces.size) finish();
 }
 
+// ------------------------------------------------------------------ AR table mode
+// When Chrome won't show the drawer over the camera, the next pieces wait on the table in front of
+// the tray (two rows of eight). Drag one into the tray; tap it to turn it (Teško); drag an empty
+// spot to move the tray; hold an empty spot for a hint.
+const BENCH_GAP = 56, BENCH_N = 16;
+let bench = [], tdrag = null;
+const _tInv = new THREE.Matrix4(), _tRay = new THREE.Ray(), _tPlane = new THREE.Plane();
+function benchSlot(i) {
+  return new THREE.Vector3(-BENCH_GAP * 3.5 + (i % 8) * BENCH_GAP, 0, view.extent / 2 + 44 + Math.floor(i / 8) * BENCH_GAP);
+}
+function layoutBench() {
+  if (!ar.bare) return;
+  bench = mode === 'play' ? state.order.filter(c => !state.placed.has(c)).slice(0, BENCH_N) : [];
+  for (const [code, p] of pieces) {
+    if (state.placed.has(code) || (tdrag && tdrag.code === code)) continue;
+    const i = bench.indexOf(code);
+    if (i < 0) { if (p.obj.parent === view.world) view.world.remove(p.obj); continue; }
+    p.obj.position.copy(benchSlot(i));
+    p.obj.rotation.set(0, -(state.rot[code] || 0) * Math.PI / 2, 0);
+    p.obj.scale.setScalar(1);
+    p.obj.visible = true;
+    view.world.add(p.obj);
+  }
+  view.renderer.shadowMap.needsUpdate = true;
+}
+function clearBench() {
+  if (!bench.length && !tdrag) return;
+  for (const [code, p] of pieces) {
+    if (!state.placed.has(code) && p.obj.parent === view.world) { view.world.remove(p.obj); p.obj.rotation.set(0, 0, 0); }
+  }
+  bench = []; tdrag = null; blob.visible = false;
+}
+// where a scene ray (metres) meets the horizontal plane at game height y, in game millimetres
+function tableHit(ray, y) {
+  if (!ray) return null;
+  view.world.updateMatrixWorld();
+  _tInv.copy(view.world.matrixWorld).invert();
+  _tRay.copy(ray).applyMatrix4(_tInv);
+  if (_tRay.direction.y > -0.02) return null;
+  _tPlane.set(UP, -y);
+  return _tRay.intersectPlane(_tPlane, new THREE.Vector3());
+}
+function tableInput(kind, ray) {
+  const now = performance.now();
+  if (kind === 'down') {
+    if (tdrag) return;
+    const Q = tableHit(ray, 0);
+    let code = null, best = Infinity;
+    if (Q && mode === 'play') bench.forEach((c, i) => {
+      const s = benchSlot(i), d = Math.hypot(Q.x - s.x, Q.z - s.z);
+      if (d < pieces.get(c).half + 8 && d < best) { best = d; code = c; }
+    });
+    if (code) {
+      const p = pieces.get(code);
+      tdrag = { kind: 'piece', code, p, t0: now, q0: Q.clone(), moved: false, over: false };
+      state.lastTried = code;
+      state.started = true;
+      sound.pick(); buzz(8);
+      p.obj.position.y = 6;
+      const ext = p.half * 2 * 1.05;
+      blob.scale.set(ext, ext, 1);
+    } else {
+      const W = ray && ray.intersectPlane(_tPlane.set(UP, -view.world.position.y), new THREE.Vector3());
+      tdrag = { kind: 'tray', t0: now, last: W, start: W && W.clone(), moved: false };
+    }
+    return;
+  }
+  if (!tdrag) return;
+  const d = tdrag;
+  if (d.kind === 'tray') {
+    const W = ray && ray.intersectPlane(_tPlane.set(UP, -view.world.position.y), new THREE.Vector3());
+    if (kind === 'move' && W && d.last) {
+      if (!d.moved && d.start && W.distanceTo(d.start) > 0.015) d.moved = true;
+      if (d.moved) { view.world.position.add(W.clone().sub(d.last)); view.renderer.shadowMap.needsUpdate = true; }
+      d.last = W;
+    }
+    if (kind === 'up') {
+      tdrag = null;
+      if (!d.moved && now - d.t0 > 550 && mode === 'play') hint();
+    }
+    return;
+  }
+  // a piece
+  const p = d.p;
+  const P = tableHit(ray, view.floorY + HOVER);
+  if (P && !d.moved && Math.hypot(P.x - d.q0.x, P.z - d.q0.z) > 9) d.moved = true;
+  if (P && d.moved) {
+    // keep the piece just beyond the finger, so the finger doesn't hide it
+    const cam = view.activeCamera().getWorldPosition(new THREE.Vector3());
+    view.world.worldToLocal(cam);
+    const dx = P.x - cam.x, dz = P.z - cam.z, len = Math.hypot(dx, dz) || 1, off = p.half + 10;
+    const x = P.x + dx / len * off, z = P.z + dz / len * off, half = view.extent / 2;
+    p.obj.position.set(x, view.floorY + HOVER, z);
+    d.over = Math.abs(x) < half && Math.abs(z) < half;
+    blob.position.set(x, view.floorY + 0.12, z);
+    blob.visible = d.over;
+  }
+  if (kind !== 'up') return;
+  tdrag = null;
+  blob.visible = false;
+  const lv = LEVELS[state.level];
+  if (!d.moved) {
+    // a tap: turn the piece on Teško, otherwise just put it back
+    if (lv.rotate && now - d.t0 < 500) { state.rot[d.code] = ((state.rot[d.code] || 0) + 1) % 4; save(); }
+    layoutBench();
+    return;
+  }
+  const dist = Math.hypot(p.obj.position.x - p.target.x, p.obj.position.z - p.target.z);
+  const tol = Math.max(lv.tol, lv.px * view.mmPerPx());
+  const rotOk = (state.rot[d.code] || 0) % 4 === 0;
+  if (d.over && dist <= tol && rotOk) {
+    place(d.code, true);
+  } else if (d.over) { sound.no(); buzz(12); } else sound.back();
+  layoutBench();
+}
+
 // pieces next to this one in the 8 x 8 grid (A-H west to east, 1-8 north to south)
 function neighbours(code) {
   const i = 'ABCDEFGH'.indexOf(code[0]), j = parseInt(code.slice(1), 10);
@@ -582,6 +713,7 @@ function finish() {
   $('#doneHints').textContent = String(state.hints);
   document.querySelectorAll('#stars i').forEach((el, i) => el.classList.toggle('on', i < stars));
   store.del(`slagalica.game.${dataId}`);
+  if (ar.active && ar.bare) { ar.say(t('bravo'), 4000); setTimeout(() => { if (ar.active) ar.end(); }, 3200); }
   setTimeout(() => {
     mode = 'explore';
     document.body.dataset.mode = 'explore';
@@ -725,12 +857,14 @@ function wireUI() {
     if (ar.active) { ar.end(); return; }
     if (!arState) arState = await ArMode.check();
     if (!arState.ok) { showArInfo(arState.reason); return; }
-    ar.start().catch(err => {
+    ar.start().catch(async err => {
       console.warn('AR', err);
       const name = err && err.name || 'Error';
-      const reason = name === 'NoOverlay' ? 'overlay' : (name === 'NotAllowedError' || name === 'SecurityError') ? 'denied' : 'start';
+      const reason = name === 'AllRefused' ? 'blocked' : name === 'SecurityError' ? 'again'
+        : name === 'NotAllowedError' ? 'denied' : 'start';
       const chrome = (navigator.userAgent.match(/Chrome\/([\d.]+)/) || [])[1] || '?';
-      showArInfo(reason, `${name}: ${err && err.message || ''}${err && err.info ? ' · ' + err.info : ' · Chrome ' + chrome}`);
+      const cam = await ArMode.cameraState();
+      showArInfo(reason, `${(err.log || []).join(' · ') || name + ': ' + (err.message || '')} · camera: ${cam} · Chrome ${chrome}`);
     });
   });
   $('#bArExit').addEventListener('click', () => ar.end());
@@ -809,7 +943,8 @@ function tick(now, frame) {
 // test hooks (used by the automated checks)
 window.__game = {
   get state() { return { ...state, placed: [...state.placed], mode }; },
-  view, pieces, startGame, place, hint, sound, neighbours, ar,
+  view, pieces, startGame, place, hint, sound, neighbours, ar, layoutBench, benchSlot,
+  get bench() { return bench.slice(); },
   screenOf(code) { const p = pieces.get(code); view.applyRig(); const s = view.worldToScreen(p.target); const r = canvas.getBoundingClientRect(); return { x: s.x + r.left, y: s.y + r.top, lift: drag ? liftPx() : null }; },
   liftFor(code, touch = true) { const p = pieces.get(code); if (!touch) return 0; const px = p.half / view.mmPerPx(); return Math.min(110, Math.max(56, px + 34)); },
 };
