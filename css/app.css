@@ -210,3 +210,8 @@ body[data-ar] #arUI { display: block; }
 body[data-ar] #touch { display: block; }
 body[data-ar] #mapctl, body[data-ar] #bPic, body[data-ar] #bView { display: none !important; }
 body[data-ar="placing"] #drawer, body[data-ar="placing"] #bArMove { visibility: hidden; }
+
+.ib.ar.off { background: rgba(255, 255, 255, 0.12); color: var(--mute); }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+a.btn { text-decoration: none; }
+.note.ver { text-align: center; margin: 4px 0 0; font-size: 12px; }

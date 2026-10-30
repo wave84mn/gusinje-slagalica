@@ -16,7 +16,7 @@ THREE = "https://cdn.jsdelivr.net/npm/three@0.184.0/"
 shutil.rmtree(OUT, ignore_errors=True)
 os.makedirs(os.path.join(OUT, "css")); os.makedirs(os.path.join(OUT, "js")); os.makedirs(os.path.join(OUT, "data"))
 shutil.copy(os.path.join(ROOT, "css", "app.css"), os.path.join(OUT, "css"))
-for f in ("main.js", "view.js", "input.js", "i18n.js", "sound.js", "ar.js"):
+for f in ("main.js", "view.js", "input.js", "i18n.js", "sound.js", "ar.js", "version.js"):
     shutil.copy(os.path.join(ROOT, "js", f), os.path.join(OUT, "js"))
 shutil.copy(os.path.join(ROOT, "data", "puzzle.json"), os.path.join(OUT, "data"))
 for name in ("pieces", "tray"):

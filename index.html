@@ -36,7 +36,7 @@
   <button id="bView" class="ib" data-t-label="view" aria-label="Pogled">
     <svg viewBox="0 0 24 24"><path d="M12 3.5l8 4.5v8l-8 4.5-8-4.5V8z"/><path d="M4 8l8 4.5L20 8M12 12.5v8"/></svg>
   </button>
-  <button id="bAR" class="ib ar" data-t-label="ar" aria-label="AR" hidden><span>AR</span></button>
+  <button id="bAR" class="ib ar" data-t-label="ar" aria-label="AR"><span>AR</span></button>
   <button id="bHint" class="ib accent" data-t-label="hint" aria-label="Pomoć">
     <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>
     <span id="hintN"></span>
@@ -122,6 +122,7 @@
     <button id="bAbout" class="row btnrow"><span data-t="about">O igri</span><span>›</span></button>
     <button id="bMenuNew" class="btn wide" data-t="newGame">Nova igra</button>
     <button class="btn ghost wide" data-close data-t="close">Zatvori</button>
+    <p class="note ver"><span data-t="version">Verzija</span> <span class="vnum"></span></p>
   </div>
 </section>
 
@@ -130,6 +131,7 @@
     <h2 data-t="about">O igri</h2>
     <p data-t="aboutText"></p>
     <p class="note" data-t="credits"></p>
+    <p class="note"><span data-t="version">Verzija</span> <span id="ver"></span></p>
     <button class="btn wide" data-close data-t="close">Zatvori</button>
   </div>
 </section>
@@ -137,6 +139,20 @@
 <!-- box picture -->
 <section id="pic" class="ov" hidden>
   <figure class="picwrap"><img id="picImg" alt=""><figcaption data-t="picture">Slika</figcaption></figure>
+</section>
+
+<!-- why AR isn't available here, and what to do -->
+<section id="arInfo" class="ov" hidden>
+  <div class="panel small">
+    <h2 data-t="arInfoTitle">AR na stolu</h2>
+    <p id="arWhy"></p>
+    <p id="arDetail" class="note"></p>
+    <div class="stack">
+      <a id="arOpenChrome" class="btn primary wide" hidden data-t="openChrome">Otvori u Chromeu</a>
+      <a id="arOpenStore" class="btn primary wide" hidden data-t="openStore" href="https://play.google.com/store/apps/details?id=com.google.ar.core" target="_blank" rel="noopener">Otvori Play prodavnicu</a>
+      <button class="btn wide" data-close data-t="close">Zatvori</button>
+    </div>
+  </div>
 </section>
 
 <!-- landmark card -->

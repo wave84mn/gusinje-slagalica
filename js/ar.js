@@ -46,8 +46,22 @@ export class ArMode {
     el.addEventListener('pointercancel', e => this.up(e, true));
   }
 
-  static async supported() {
-    try { return !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')); } catch { return false; }
+  static async supported() { return (await ArMode.check()).ok; }
+
+  // Can this phone and browser do AR? If not, why not (so the game can say what to do).
+  static async check() {
+    const ua = navigator.userAgent || '';
+    const android = /Android/i.test(ua);
+    const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inApp = /; wv\)|FBAN|FBAV|Instagram|Line\/|Viber|WhatsApp|Telegram|GSA\//i.test(ua);
+    const chrome = /Chrome\/\d+/.test(ua) && !/EdgA|OPR|SamsungBrowser|YaBrowser|Firefox|DuckDuckGo|Brave/i.test(ua) && !inApp;
+    const base = { android, ios, inApp, chrome };
+    if (!window.isSecureContext) return { ...base, ok: false, reason: 'secure' };
+    if (!navigator.xr) return { ...base, ok: false, reason: ios ? 'ios' : android ? (inApp ? 'inapp' : 'browser') : 'desktop' };
+    let ok = false;
+    try { ok = await navigator.xr.isSessionSupported('immersive-ar'); } catch { ok = false; }
+    if (ok) return { ...base, ok: true, reason: '' };
+    return { ...base, ok: false, reason: ios ? 'ios' : android ? (inApp ? 'inapp' : chrome ? 'arcore' : 'browser') : 'desktop' };
   }
 
   get active() { return !!this.session; }

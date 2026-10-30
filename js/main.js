@@ -7,6 +7,7 @@ import { Gestures } from './input.js';
 import { t, setLang, getLang } from './i18n.js';
 import { sound, buzz } from './sound.js';
 import { ArMode } from './ar.js';
+import { VERSION } from './version.js';
 
 const $ = s => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -49,6 +50,18 @@ const ar = new ArMode(view, {
   onSize() { syncArSizes(); },
   onEnd() { delete document.body.dataset.ar; $('#arHint').textContent = ''; lastFound = null; layout(); if (mode === 'play') view.fit(0, 10); },
 });
+let arState = null;
+// Tell the player why AR is not available here, with a button that fixes it where possible.
+function showArInfo(reason, detail = '') {
+  $('#arWhy').textContent = t('arWhy_' + reason) || t('arFail');
+  $('#arDetail').textContent = detail;
+  const chromeLink = $('#arOpenChrome');
+  const android = arState && arState.android;
+  chromeLink.hidden = !(android && (reason === 'browser' || reason === 'inapp' || reason === 'arcore'));
+  chromeLink.href = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
+  $('#arOpenStore').hidden = !(android && reason === 'arcore');
+  openOverlay('#arInfo');
+}
 function syncArSizes() {
   document.querySelectorAll('.arsizes button').forEach(b => b.classList.toggle('sel', Math.abs(parseFloat(b.dataset.size) - ar.size) < 0.02));
 }
@@ -707,15 +720,18 @@ function wireUI() {
   $('#bZout').addEventListener('click', () => view.zoomBy(1 / 0.6));
   $('#bTurn').addEventListener('click', () => view.turnQuarter(1));
   $('#bNorth').addEventListener('click', () => view.northUp());
-  $('#bAR').addEventListener('click', () => {
+  $('#bAR').addEventListener('click', async () => {
     sound.unlock();
     if (ar.active) { ar.end(); return; }
-    ar.start().catch(err => { console.warn('AR', err); toast(t('arFail'), 3000); });
+    if (!arState) arState = await ArMode.check();
+    if (!arState.ok) { showArInfo(arState.reason); return; }
+    ar.start().catch(err => { console.warn('AR', err); showArInfo('start', String(err && (err.message || err.name) || '')); });
   });
   $('#bArExit').addEventListener('click', () => ar.end());
   $('#bArMove').addEventListener('click', () => ar.replace());
   document.querySelectorAll('.arsizes button').forEach(b => b.addEventListener('click', () => ar.setSize(parseFloat(b.dataset.size))));
-  ArMode.supported().then(ok => { $('#bAR').hidden = !ok; $('#arNote').hidden = !ok; });
+  ArMode.check().then(s => { arState = s; $('#bAR').classList.toggle('off', !s.ok); $('#arNote').hidden = !s.ok; });
+  document.querySelectorAll('.vnum, #ver').forEach(el => { el.textContent = VERSION; });
   $('#bSound').addEventListener('click', () => { prefs.sound = !(prefs.sound !== false); sound.on = prefs.sound; store.set('slagalica.prefs', prefs); syncToggles(); sound.unlock(); });
   $('#bMenuHow').addEventListener('click', () => openOverlay('#help'));
   $('#bMenuNew').addEventListener('click', () => { closeAll(); save(); showStart(); });

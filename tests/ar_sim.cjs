@@ -20,11 +20,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   await page.goto(url + '?reset&lowpower');
   await page.waitForFunction(() => window.__game && window.__game.state.mode === 'attract', null, { timeout: 120000 });
-  check('AR button hidden where AR is not available', await page.isHidden('#bAR'));
   await page.tap('[data-level="easy"]');
   await sleep(500);
   await page.tap('#bHelpGo');
   await sleep(900);
+  check('AR button shown but marked off where AR is not available', await page.isVisible('#bAR') && await page.$eval('#bAR', e => e.classList.contains('off')));
+  await page.tap('#bAR'); await sleep(400);
+  check('tapping it explains why', await page.isVisible('#arInfo') && (await page.textContent('#arWhy')).length > 10, await page.textContent('#arWhy'));
+  await page.tap('#arInfo [data-close]'); await sleep(300);
 
   // 1. world moved, turned and scaled (as AR does): screen <-> tray maths must still agree
   const round = await G(() => {
