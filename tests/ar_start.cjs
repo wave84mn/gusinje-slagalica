@@ -6,6 +6,7 @@
 // usage: node tests/ar_start.cjs <url>
 const { chromium } = require('playwright');
 const url = process.argv[2] || 'http://127.0.0.1:8099/';
+const location_host = new URL(url).host;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fakeXR = (mode) => {
   const ua = navigator.userAgent.replace(/\(([^)]*)\)/, '(Linux; Android 14; Pixel 7)');
@@ -63,7 +64,7 @@ const fakeXR = (mode) => {
     await p.tap('#bAR'); await sleep(500);
     const r = await info(p);
     check('refused: one tap tries the full game, table mode and plain AR', r.asked.length === 3 && r.asked[0].overlay && !r.asked[1].overlay && r.asked[2].optional.length === 0 && r.asked.every(a => a.required.length === 0), JSON.stringify(r.asked));
-    check('refused: explains what to reset, with the Play Store button', r.shown && /Resetuj dozvole/.test(r.why) && /Google Play Services for AR/.test(r.why) && r.store, r.why);
+    check('refused: explains what to reset, with the Play Store button', r.shown && /Postavke sajta/.test(r.why) && !r.why.includes('{site}') && r.why.includes(location_host) && /Google Play Services for AR/.test(r.why) && r.store, r.why);
     check('refused: detail lists each try and the camera permission', /overlay: NotSupportedError/.test(r.detail) && /table: NotSupportedError/.test(r.detail) && /plain: NotSupportedError/.test(r.detail) && /camera: /.test(r.detail) && /Chrome /.test(r.detail), r.detail);
     check('refused: game left as it was', r.ar === '' && !r.active);
     await p.tap('#arInfo [data-close]'); await sleep(300);

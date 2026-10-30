@@ -65,7 +65,7 @@ export const TEXT = {
     arFloat: 'Podloga čeka ispred telefona. Nanišani mjesto na stolu i dodirni ekran.',
     arBareHelp: 'Prevuci dio sa stola u kutiju. Dodir na prazno mjesto i povlačenje pomjera kutiju, duži dodir daje pomoć. Dugme Nazad izlazi iz AR-a.',
     arWhy_again: 'AR se nije stigao pokrenuti. Dodirni AR još jednom.',
-    arWhy_blocked: 'Chrome je odbio AR za ovu stranicu. Probaj redom: 1) dodirni ikonicu lijevo od adrese → Dozvole → Resetuj dozvole; 2) potpuno zatvori Chrome (skloni ga iz nedavnih aplikacija) i otvori igru ponovo; 3) ažuriraj „Google Play Services for AR" u Play prodavnici.',
+    arWhy_blocked: "Chrome ne pušta AR na ovoj stranici. Uključi ga ovako:\n1) Chrome ⋮ → Postavke (Settings) → Postavke sajta (Site settings) → AR → dozvoli.\n2) Tamo: Svi sajtovi (All sites) → {site} → Obriši i resetuj (Clear & reset).\n3) Dugme ispod: instaliraj ili ažuriraj „Google Play Services for AR\". Ako Play kaže da uređaj nije kompatibilan, ovaj telefon nema AR.\nZatim zatvori Chrome, otvori igru i dodirni AR: kad Chrome pita, dozvoli.",
   },
   sq: {
     title: 'Bashko Gucinë',
@@ -132,7 +132,7 @@ export const TEXT = {
     arFloat: 'Tabakaja pret para telefonit. Synoje vendin në tavolinë dhe prek ekranin.',
     arBareHelp: 'Tërhiqe një pjesë nga tavolina në kuti. Prekja e një vendi bosh dhe tërheqja e lëviz kutinë, prekja e gjatë jep ndihmë. Butoni Mbrapa del nga AR.',
     arWhy_again: 'AR nuk arriti të niset. Prek AR edhe një herë.',
-    arWhy_blocked: 'Chrome e refuzoi AR për këtë faqe. Provo me radhë: 1) prek ikonën majtas adresës → Lejet → Rivendos lejet; 2) mbyll plotësisht Chrome (hiqe nga aplikacionet e fundit) dhe hape lojën përsëri; 3) përditëso „Google Play Services for AR" në Play Store.',
+    arWhy_blocked: "Chrome nuk e lejon AR në këtë faqe. Aktivizoje kështu:\n1) Chrome ⋮ → Cilësimet (Settings) → Cilësimet e sajtit (Site settings) → AR → lejo.\n2) Aty: Të gjitha sajtet (All sites) → {site} → Pastro dhe rivendos (Clear & reset).\n3) Butoni më poshtë: instalo ose përditëso „Google Play Services for AR\". Nëse Play thotë se pajisja nuk është e përputhshme, ky telefon nuk ka AR.\nPastaj mbyll Chrome, hap lojën dhe prek AR: kur Chrome pyet, lejo.",
   },
   en: {
     title: 'Gusinje Puzzle',
@@ -199,7 +199,7 @@ export const TEXT = {
     arFloat: 'The tray waits in front of the phone. Aim at a spot on the table and tap the screen.',
     arBareHelp: 'Drag a piece from the table into the tray. Touch and drag an empty spot to move the tray, hold for a hint. The Back button leaves AR.',
     arWhy_again: "AR didn't have time to start. Tap AR once more.",
-    arWhy_blocked: 'Chrome refused AR for this page. Try in turn: 1) tap the icon left of the address → Permissions → Reset permissions; 2) close Chrome completely (swipe it out of recent apps) and open the game again; 3) update "Google Play Services for AR" in the Play Store.',
+    arWhy_blocked: "Chrome won't allow AR on this page. Turn it on like this:\n1) Chrome ⋮ → Settings → Site settings → AR → allow.\n2) There: All sites → {site} → Clear & reset.\n3) Button below: install or update \"Google Play Services for AR\". If Play says the device isn't compatible, this phone has no AR.\nThen close Chrome, open the game and tap AR: when Chrome asks, allow.",
   },
 };
 

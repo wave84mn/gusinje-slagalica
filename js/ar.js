@@ -160,8 +160,11 @@ export class ArMode {
   }
 
   // the camera permission Chrome has for this site: granted, prompt, denied (or ? if unknown)
-  static async cameraState() {
-    try { return (await navigator.permissions.query({ name: 'camera' })).state; } catch { return '?'; }
+  static async cameraState() { return ArMode.permState('camera'); }
+
+  // a permission's state for this site; '?' where the browser can't say (e.g. 'ar' on older Chrome)
+  static async permState(name) {
+    try { return (await navigator.permissions.query({ name })).state; } catch { return '?'; }
   }
 
   end() { this.session?.end().catch(() => {}); }

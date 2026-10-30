@@ -141,6 +141,7 @@ body[data-mode="explore"] #exploreBar { display: flex; }
 .panel h2 { font-family: var(--serif); font-weight: 500; font-size: 24px; margin: 0 0 8px; }
 .panel p { margin: 0 0 12px; }
 .panel.small h2 { font-size: 22px; }
+#arWhy { white-space: pre-line; }
 .row { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 4px; border-bottom: 1px solid var(--line); width: 100%; }
 .btnrow { text-align: left; }
 .btnrow span:last-child { color: var(--mute); }

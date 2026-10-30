@@ -68,7 +68,7 @@ const ar = new ArMode(view, {
 let arState = null;
 // Tell the player why AR is not available here, with a button that fixes it where possible.
 function showArInfo(reason, detail = '') {
-  $('#arWhy').textContent = t('arWhy_' + reason) || t('arFail');
+  $('#arWhy').textContent = (t('arWhy_' + reason) || t('arFail')).replace('{site}', location.host);
   $('#arDetail').textContent = detail;
   const chromeLink = $('#arOpenChrome');
   const android = arState && arState.android;
@@ -863,8 +863,8 @@ function wireUI() {
       const reason = name === 'AllRefused' ? 'blocked' : name === 'SecurityError' ? 'again'
         : name === 'NotAllowedError' ? 'denied' : 'start';
       const chrome = (navigator.userAgent.match(/Chrome\/([\d.]+)/) || [])[1] || '?';
-      const cam = await ArMode.cameraState();
-      showArInfo(reason, `${(err.log || []).join(' · ') || name + ': ' + (err.message || '')} · camera: ${cam} · Chrome ${chrome}`);
+      const cam = await ArMode.cameraState(), arp = await ArMode.permState('ar');
+      showArInfo(reason, `${(err.log || []).join(' · ') || name + ': ' + (err.message || '')} · camera: ${cam}${arp === '?' ? '' : ' · AR: ' + arp} · Chrome ${chrome}`);
     });
   });
   $('#bArExit').addEventListener('click', () => ar.end());
