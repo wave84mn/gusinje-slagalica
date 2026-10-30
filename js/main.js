@@ -30,18 +30,34 @@ const HOVER = 7;         // mm a dragged piece floats above the tray
 const UP = new THREE.Vector3(0, 1, 0);
 
 const canvas = $('#gl');
-// Offline cache. When a new version has been downloaded, switch to it at once, unless a game is
-// under way (then it switches the next time the start screen opens; progress is saved either way).
+// Offline cache. When a new version has been downloaded, switch to it at once. A game that was
+// just started on the old version and not touched yet starts again, same level, on the new one;
+// a game under way switches the next time the start screen opens (progress is saved either way).
 // The listener is attached first thing, because the update can finish while the models still load.
 const USE_SW = 'serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW;
+const RESTART = 'slagalica.restart';
 let updateReady = false;
 if (USE_SW) {
   const hadOld = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!hadOld || updateReady) return;
     updateReady = true;
-    if (mode !== 'play') location.reload();
+    if (mode !== 'play') { location.reload(); return; }
+    if (!state.started && !state.done) {
+      try { sessionStorage.setItem(RESTART, state.level); } catch { /* then it just opens the start screen */ }
+      location.reload();
+      return;
+    }
+    toast(t('updateLater'), 6000);
   });
+}
+// Look for a new version when the game comes back on screen (a home-screen app can stay open in
+// the background for days) and on the start screen; at most once a minute.
+let lastUpdateCheck = 0;
+function checkForUpdate() {
+  if (!USE_SW || updateReady || Date.now() - lastUpdateCheck < 60000) return;
+  lastUpdateCheck = Date.now();
+  navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
 }
 const LOW = params.has('lowpower');   // no antialiasing, 1x pixels, no idle animation (slow devices, tests)
 const view = new View(canvas, { low: LOW });
@@ -184,6 +200,9 @@ async function load() {
   if (puzzle.standin) $('#standin').hidden = false;
   $('#loading').classList.add('gone');
   showStart();
+  let again = null;
+  try { again = sessionStorage.getItem(RESTART); sessionStorage.removeItem(RESTART); } catch { /* no session storage */ }
+  if (again && LEVELS[again]) startGame(again, false);
   view.renderer.setAnimationLoop(tick);
   if (USE_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
@@ -240,6 +259,7 @@ function showStart() {
   const s = savedGame();
   $('#bContinue').hidden = !s;
   if (s) $('#contInfo').textContent = `${t(s.level)} · ${s.placed.length}/${pieces.size} · ${fmt(s.elapsed)}`;
+  checkForUpdate();
   requestAnimationFrame(() => {
     layout();
     view.rig = { x: 0, z: 0, dist: view.fitDist * 1.0, tilt: 0.82, yaw: view.rig.yaw || 0 };
@@ -908,7 +928,10 @@ function wireUI() {
   $('#bExplore').addEventListener('click', startExplore);
   $('#bAgain').addEventListener('click', () => showStart());
   $('#bExploreNew').addEventListener('click', () => showStart());
-  document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') save(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { checkForUpdate(); return; }
+    if (mode === 'play') save();
+  });
   window.addEventListener('pagehide', () => { if (mode === 'play') save(); });
   syncToggles();
 }

@@ -34,8 +34,11 @@ const VERSION = '{version}';
 const CACHE = 'slagalica-' + VERSION;
 const FILES = {json.dumps(urls, indent=0)};
 
+// cache: 'reload' - always from the server: the browser's own cache can still hold the previous
+// version's files for a few minutes after an update (GitHub Pages lets it keep them 10 minutes)
 self.addEventListener('install', e => {{
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(u => new Request(u, {{ cache: 'reload' }}))))
+    .then(() => self.skipWaiting()));
 }});
 self.addEventListener('activate', e => {{
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('slagalica-') && k !== CACHE).map(k => caches.delete(k))))
