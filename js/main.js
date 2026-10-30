@@ -26,6 +26,19 @@ const HOVER = 7;         // mm a dragged piece floats above the tray
 const UP = new THREE.Vector3(0, 1, 0);
 
 const canvas = $('#gl');
+// Offline cache. When a new version has been downloaded, switch to it at once, unless a game is
+// under way (then it switches the next time the start screen opens; progress is saved either way).
+// The listener is attached first thing, because the update can finish while the models still load.
+const USE_SW = 'serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW;
+let updateReady = false;
+if (USE_SW) {
+  const hadOld = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadOld || updateReady) return;
+    updateReady = true;
+    if (mode !== 'play') location.reload();
+  });
+}
 const LOW = params.has('lowpower');   // no antialiasing, 1x pixels, no idle animation (slow devices, tests)
 const view = new View(canvas, { low: LOW });
 let lastFound = null;
@@ -131,17 +144,7 @@ async function load() {
   $('#loading').classList.add('gone');
   showStart();
   view.renderer.setAnimationLoop(tick);
-  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.SLAGALICA_NO_SW) {
-    // When a new version has been downloaded, switch to it at once, unless a game is under way
-    // (then it switches the next time the start screen opens; progress is saved either way).
-    const hadOld = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!hadOld || updateReady) return;
-      updateReady = true;
-      if (mode !== 'play') location.reload();
-    });
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  if (USE_SW) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 // ------------------------------------------------------------------ layout / insets
@@ -168,7 +171,6 @@ function savedGame() {
   return s && !s.done && s.placed?.length ? s : null;
 }
 
-let updateReady = false;
 function showStart() {
   if (ar.active) ar.end();
   if (updateReady && mode === 'play') { save(); location.reload(); return; }
