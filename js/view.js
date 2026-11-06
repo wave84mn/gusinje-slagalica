@@ -36,17 +36,26 @@ export class View {
     this.world = new THREE.Group();
     scene.add(this.world);
     this.world.add(sun, sun.target);
-    scene.add(new THREE.HemisphereLight(0xf2efe6, 0x4a3f30, 0.55));
-    // catches the tray's shadow on the real table in AR
-    this.catcher = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.32 }));
+    this.hemi = new THREE.HemisphereLight(0xf2efe6, 0x4a3f30, 0.55);
+    scene.add(this.hemi);
+    // AR: the sun's shadow falls on the real table...
+    this.catcherOpacity = 0.34;
+    this.catcher = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: this.catcherOpacity }));
     this.catcher.rotation.x = -Math.PI / 2;
-    this.catcher.scale.set(520, 520, 1);
+    this.catcher.scale.set(560, 560, 1);
     this.catcher.position.y = 0.05;
     this.catcher.receiveShadow = true;
     this.catcher.visible = false;
     this.catcher.userData.hideInCover = true;
     this.world.add(this.catcher);
-    this.xr = false;
+    // ...and a soft dark rim right under the tray, where it touches the table
+    this.contactOpacity = 0.62;
+    this.contact = makeContactShadow(this.extent, this.contactOpacity);
+    this.contact.visible = false;
+    this.contact.userData.hideInCover = true;
+    this.world.add(this.contact);
+    this.inAR = false;
+    this.arCam = null;
     this._inv = new THREE.Matrix4();
     this.uGameInv = { value: new THREE.Matrix4() };
 
@@ -102,7 +111,6 @@ export class View {
   setInsets(top, bottom) { this.insets = { top, bottom }; this.resize(); }
 
   resize() {
-    if (this.renderer.xr.isPresenting) return;     // the AR session owns the size
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
     this.size = { w, h };
@@ -194,17 +202,14 @@ export class View {
     return Math.atan2(b.x - a.x, -(b.y - a.y));
   }
 
-  // The camera that shows the scene right now: the phone's own camera pose in AR, the rig otherwise.
+  // The camera that shows the scene right now: the phone's camera in AR, the rig otherwise.
   activeCamera() {
-    if (this.renderer.xr.isPresenting) {
-      const xc = this.renderer.xr.getCamera();
-      return xc.cameras && xc.cameras.length ? xc.cameras[0] : xc;
-    }
+    if (this.arCam) { this.arCam.updateMatrixWorld(); return this.arCam; }
     this.applyRig();
     return this.camera;
   }
 
-  screenSize() { return this.renderer.xr.isPresenting ? { w: window.innerWidth, h: window.innerHeight } : this.size; }
+  screenSize() { return this.size; }
 
   // Screen (CSS px) to a point on the game's horizontal plane at height y (game millimetres).
   screenToPlane(sx, sy, y = this.floorY, out = new THREE.Vector3()) {
@@ -231,7 +236,7 @@ export class View {
 
   // mm of the game per CSS px near the middle of the view
   mmPerPx() {
-    if (!this.renderer.xr.isPresenting) return 2 * this.rig.dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / this.fullH;
+    if (!this.arCam) return 2 * this.rig.dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / this.fullH;
     const a = this.worldToScreen(new THREE.Vector3(0, this.floorY, 0)), b = this.worldToScreen(new THREE.Vector3(10, this.floorY, 0));
     const px = Math.hypot(b.x - a.x, b.y - a.y);
     return px > 0.01 ? 10 / px : 1;
@@ -240,24 +245,24 @@ export class View {
   render() {
     this.world.updateMatrixWorld();
     this.uGameInv.value.copy(this.world.matrixWorld).invert();
-    if (this.renderer.xr.isPresenting) this.renderer.render(this.scene, this.camera);
-    else { this.applyRig(); this.renderer.render(this.scene, this.camera); }
+    // In AR the whole world (sun included) moves and scales as one, so the shadow map's picture stays
+    // valid and only its matrices have to follow: no shadow re-render every frame.
+    if (this.inAR && !this.renderer.shadowMap.needsUpdate) this.sun.shadow.updateMatrices(this.sun);
+    this.renderer.render(this.scene, this.activeCamera());
     this.needsRender = false;
   }
 
-  // Switch between the screen view and AR. In AR the world is scaled to metres by the caller
-  // (setWorldScale); the camera's near/far become those of a phone camera.
-  setAR(on) {
-    this.xr = on;
+  // Switch between the screen view and AR. In AR the scene is seen through `cam` (the phone's
+  // camera, in metres) over a transparent background; the world is scaled to metres by the caller
+  // (setWorldScale).
+  setAR(on, cam = null) {
+    this.inAR = on;
+    this.arCam = on ? cam : null;
     this.scene.background = on ? null : this.bg;
     this.catcher.visible = on;
-    if (on) {
-      this._saved = { near: this.camera.near, far: this.camera.far, fov: this.camera.fov };
-      this.camera.near = 0.02; this.camera.far = 40; this.camera.updateProjectionMatrix();
-    } else {
+    this.contact.visible = on;
+    if (!on) {
       this.world.position.set(0, 0, 0); this.world.quaternion.identity(); this.setWorldScale(1);
-      // the AR session overwrites the camera with the phone's; put ours back
-      if (this._saved) { this.camera.near = this._saved.near; this.camera.far = this._saved.far; this.camera.fov = this._saved.fov; this.camera.zoom = 1; }
       this.resize();
     }
     this.renderer.shadowMap.needsUpdate = true;
@@ -384,6 +389,31 @@ export class View {
     this.needsRender = true;
     return cv;
   }
+}
+
+// AR: a soft square of shade the size of the tray, darkest under its edge, where it meets the table.
+function makeContactShadow(extent, opacity) {
+  const S = 256, cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const g = cv.getContext('2d');
+  const inner = S * 0.74, blur = S * 0.07;
+  // white on black = how dark (an alpha map). The square is drawn far off the canvas so only its
+  // blurred shadow lands on it (canvas blur filters are missing in older Safari).
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, S, S);
+  g.shadowColor = '#fff';
+  g.shadowBlur = blur;
+  g.shadowOffsetX = 4 * S;
+  g.fillStyle = '#fff';
+  g.fillRect((S - inner) / 2 - 4 * S, (S - inner) / 2, inner, inner);
+  const tex = new THREE.CanvasTexture(cv);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x000000, alphaMap: tex, transparent: true, depthWrite: false, opacity }));
+  const s = extent * 1.3;
+  m.scale.set(s, 1, s);
+  m.position.y = 0.08;
+  m.renderOrder = -1;
+  return m;
 }
 
 // Soft round shadow under a lifted piece.

@@ -1,5 +1,5 @@
-"""QR cards for the game: one for Android phones (opens the game in Chrome, ready for AR) and one
-for Windows. The Xplore Prokletije logo (source/brand/xplore_parts.json, from tools/logo_trace.py) sits in
+"""QR cards for the game: one for phones (iPhone and Android, AR included) and one for Windows.
+The phone card keeps its old link (?p=android), so cards printed before AR worked on iPhone still work. The Xplore Prokletije logo (source/brand/xplore_parts.json, from tools/logo_trace.py) sits in
 the middle of each code, in the card's ink and ochre; the game's name and the platform
 are written underneath. Writes build/qr/*.html; tools/qr_render.cjs turns them into PNG and PDF,
 and this script's --check reads the PNGs back.
@@ -10,7 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "build", "qr")
 BASE = "https://wave84mn.github.io/gusinje-slagalica/"
 CARDS = [
-    {"id": "android", "url": BASE + "?p=android", "platform": "Android", "app": "Google Chrome"},
+    {"id": "android", "url": BASE + "?p=android", "platform": "Telefon", "app": "iPhone · Android"},
     {"id": "windows", "url": BASE + "?p=windows", "platform": "Windows", "app": "Edge ili Chrome"},
 ]
 INK = "#1d1a16"

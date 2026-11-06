@@ -1,5 +1,6 @@
-// The links in the QR codes: ?p=android reopens the game in Chrome from other Android browsers,
-// and in Chrome (or on Windows) the tag just disappears from the address.
+// The links in the QR codes carry ?p=android or ?p=windows. AR used to need Chrome, so Android
+// browsers were sent there; AR now works in every phone browser, so every browser stays put and the
+// tag just disappears from the address (other options are kept).
 // usage: node tests/qr_link.cjs <url>
 const { chromium } = require('playwright');
 const url = process.argv[2] || 'http://127.0.0.1:8099/';
@@ -9,6 +10,7 @@ const UA = {
   firefox: 'Mozilla/5.0 (Android 14; Mobile; rv:140.0) Gecko/140.0 Firefox/140.0',
   webview: 'Mozilla/5.0 (Linux; Android 14; K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36',
   windows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0',
+  iphone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.1 Mobile/15E148 Safari/604.1',
 };
 (async () => {
   const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -29,14 +31,12 @@ const UA = {
     return { asked, now };
   };
   const intent = a => a.find(u => u.startsWith('intent://'));
-  let r = await visit(UA.samsung, '?p=android');
-  check('Samsung Internet: reopens in Chrome', !!intent(r.asked) && /package=com\.android\.chrome/.test(intent(r.asked)) && /S\.browser_fallback_url=http/.test(intent(r.asked)), intent(r.asked) || r.asked.join(' '));
-  r = await visit(UA.firefox, '?p=android');
-  check('Firefox on Android: reopens in Chrome', !!intent(r.asked));
-  r = await visit(UA.chrome, '?p=android&reset');
-  check('Chrome on Android: stays, tag dropped, other options kept', !intent(r.asked) && r.now.endsWith('/?reset'), r.now);
-  r = await visit(UA.webview, '?p=android');
-  check('in-app browser: stays (no broken jump)', !intent(r.asked) && !r.now.includes('p=android'), r.now);
+  for (const name of ['samsung', 'firefox', 'chrome', 'webview', 'iphone']) {
+    const r = await visit(UA[name], '?p=android&reset');
+    check(`${name}: stays, tag dropped, other options kept`, !intent(r.asked) && r.now.endsWith('/?reset'), r.now);
+  }
+  let r = await visit(UA.iphone, '?p=android');
+  check('iPhone with the Android code: clean address', !intent(r.asked) && /\/$/.test(r.now), r.now);
   r = await visit(UA.windows, '?p=windows');
   check('Windows: stays, tag dropped', !intent(r.asked) && /\/$/.test(r.now), r.now);
   r = await visit(UA.samsung, '');
